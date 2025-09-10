@@ -29,13 +29,11 @@ public class User {
     private String firstName;
     private String lastName;
     private String phone;
-    //zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+    
     @Column(columnDefinition = "TEXT")
     private String address;
-
     private String role = "USER";
     private Boolean isActive = true;
-
     private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt = LocalDateTime.now();
 }

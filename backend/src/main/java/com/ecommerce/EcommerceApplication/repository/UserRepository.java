@@ -1,6 +1,5 @@
 package com.ecommerce.EcommerceApplication.repository;
 
-
 import com.ecommerce.EcommerceApplication.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
