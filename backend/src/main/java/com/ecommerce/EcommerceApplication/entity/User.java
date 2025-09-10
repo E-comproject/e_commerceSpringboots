@@ -29,7 +29,7 @@ public class User {
     private String firstName;
     private String lastName;
     private String phone;
-
+    //qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq
     @Column(columnDefinition = "TEXT")
     private String address;
 
