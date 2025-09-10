@@ -27,7 +27,7 @@ public class ProductController {
 
     @PostMapping
     public String createProduct(@RequestBody String product) {
-        return "สร้างสินค้าใหม่: " + product;
+        return "สร้างสินค้าใหม่555: " + product;
     }
 
     @PutMapping("/{id}")
