@@ -17,7 +17,7 @@ public class ProductController {
 
     @GetMapping
     public String getAllProducts() {
-        return "รายการสินค้าทั้งหมด5555";
+        return "รายการสินค้าทั้งหมดจากดล5555";
     }
 
     @GetMapping("/{id}")
