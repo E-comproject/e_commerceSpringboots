@@ -25,7 +25,7 @@ scripts/check-docker.bat
 **เริ่มต้นฐานข้อมูล**:
 ```bash
 # รัน PostgreSQL และ pgAdmin ด้วย Docker
-scripts/start-database.bat
+scripts/
 
 # หรือใช้คำสั่งโดยตรง
 docker-compose up -d
@@ -50,7 +50,10 @@ CREATE DATABASE ecommerce_prod;
 cd backend
 
 # Development mode
-mvn spring-boot:run -Dspring.profiles.active=dev
+# mvn spring-boot:run -Dspring.profiles.active=dev
+$env:SPRING_PROFILES_ACTIVE = "dev"
+mvn spring-boot:run
+
 
 # หรือ Production mode
 mvn spring-boot:run -Dspring.profiles.active=prod
@@ -61,7 +64,7 @@ Backend จะรันที่ http://localhost:8080
 ### 3. รัน Frontend (Next.js)
 
 ```bash
-cd frontend
+cd frontend 
 npm install
 npm run dev
 ```
