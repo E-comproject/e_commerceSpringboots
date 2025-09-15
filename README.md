@@ -53,7 +53,7 @@ cd backend
 # mvn spring-boot:run -Dspring.profiles.active=dev
 $env:SPRING_PROFILES_ACTIVE = "dev"
 mvn spring-boot:run
-
+lovedad
 
 # หรือ Production mode
 mvn spring-boot:run -Dspring.profiles.active=prod
