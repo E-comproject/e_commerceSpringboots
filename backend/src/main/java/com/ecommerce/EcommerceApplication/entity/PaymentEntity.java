@@ -1,9 +1,9 @@
+
 package com.ecommerce.EcommerceApplication.entity;
 
 import com.ecommerce.EcommerceApplication.domain.model.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
@@ -16,7 +16,6 @@ import java.time.OffsetDateTime;
 )
 @Getter @Setter @NoArgsConstructor
 public class PaymentEntity {
-
   @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 

@@ -7,14 +7,10 @@ import com.ecommerce.EcommerceApplication.repository.PaymentJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-@Component
-@RequiredArgsConstructor
+@Component @RequiredArgsConstructor
 public class TransactionIdValidator implements PaymentValidator {
-
   private final PaymentJpaRepository repo;
-
-  @Override
-  public void validate(PaymentCreateRequest req) {
+  @Override public void validate(PaymentCreateRequest req) {
     var tx = PaymentMapper.normalize(req.transactionId());
     if (tx != null && repo.existsByTransactionId(tx)) {
       throw new BadRequestException("transaction_id duplicated");

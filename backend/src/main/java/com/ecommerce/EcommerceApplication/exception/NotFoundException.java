@@ -1,5 +1,5 @@
-package com.ecommerce.EcommerceApplication.exception;
 
+package com.ecommerce.EcommerceApplication.exception;
 public class NotFoundException extends RuntimeException {
   public NotFoundException(String msg) { super(msg); }
 }

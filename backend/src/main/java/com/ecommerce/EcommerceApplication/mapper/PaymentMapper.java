@@ -1,3 +1,4 @@
+
 package com.ecommerce.EcommerceApplication.mapper;
 
 import com.ecommerce.EcommerceApplication.domain.model.PaymentStatus;
@@ -6,7 +7,6 @@ import com.ecommerce.EcommerceApplication.dto.PaymentResponse;
 import com.ecommerce.EcommerceApplication.entity.PaymentEntity;
 
 public final class PaymentMapper {
-
   private PaymentMapper() {}
 
   public static PaymentEntity toEntity(PaymentCreateRequest req) {
@@ -22,15 +22,8 @@ public final class PaymentMapper {
 
   public static PaymentResponse toResponse(PaymentEntity e) {
     return new PaymentResponse(
-        e.getId(),
-        e.getOrderId(),
-        e.getPaymentMethod(),
-        e.getProvider(),
-        e.getTransactionId(),
-        e.getAmount(),
-        e.getStatus(),
-        e.getPaidAt(),
-        e.getCreatedAt()
+      e.getId(), e.getOrderId(), e.getPaymentMethod(), e.getProvider(), e.getTransactionId(),
+      e.getAmount(), e.getStatus(), e.getPaidAt(), e.getCreatedAt()
     );
   }
 
