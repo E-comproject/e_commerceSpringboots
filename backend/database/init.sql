@@ -135,7 +135,6 @@ CREATE TABLE orders (
   subtotal NUMERIC(12,2) NOT NULL DEFAULT 0,
   shipping_fee NUMERIC(12,2) NOT NULL DEFAULT 0,
   tax_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
-  discount_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
   total_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
   
   -- Address snapshots (stored as JSON)

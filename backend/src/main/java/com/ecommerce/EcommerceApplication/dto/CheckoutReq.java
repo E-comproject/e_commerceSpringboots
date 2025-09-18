@@ -3,10 +3,10 @@ package com.ecommerce.EcommerceApplication.dto;
 import java.math.BigDecimal;
 
 public class CheckoutReq {
-    public String shippingAddressJson; // JSON string
-    public String billingAddressJson;  // optional
-    public String notes;
-    public BigDecimal shippingFee;     // optional (default 0)
-    public BigDecimal taxAmount;       // optional (default 0)
-    public BigDecimal discountAmount;  // optional (default 0)
+    public String shippingAddressJson;  // REQUIRED (string JSON)
+    public String billingAddressJson;   // optional
+    public BigDecimal shippingFee;      // optional
+    public BigDecimal taxAmount;        // optional
+     // optional
+    public String notes;                // optional
 }

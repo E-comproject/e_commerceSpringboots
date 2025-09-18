@@ -18,21 +18,27 @@ public class OrderItem {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // FK (read-only shadow)
     @Column(name = "order_id", insertable = false, updatable = false)
     private Long orderId;
-    
 
-    // Snapshot data
+    @Column(name = "product_id")
+    private Long productId;
+
+    @Column(name = "shop_id")
+    private Long shopId;
+
     @Column(name = "product_name", nullable = false)
     private String productName;
+
     @Column(name = "product_sku")
     private String productSku;
 
     @Column(name = "unit_price", precision = 12, scale = 2, nullable = false)
     private BigDecimal unitPrice;
+
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
+
     @Column(name = "total_price", precision = 12, scale = 2, nullable = false)
     private BigDecimal totalPrice;
 
@@ -43,14 +49,13 @@ public class OrderItem {
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", insertable = false, updatable = false)
-     private Product product;
-
-    // getters/setters ...
+    // getters/setters
     public Long getId() { return id; }
     public Long getOrderId() { return orderId; }
-
+    public Long getProductId() { return productId; }
+    public void setProductId(Long productId) { this.productId = productId; }
+    public Long getShopId() { return shopId; }
+    public void setShopId(Long shopId) { this.shopId = shopId; }
     public String getProductName() { return productName; }
     public void setProductName(String productName) { this.productName = productName; }
     public String getProductSku() { return productSku; }
@@ -65,6 +70,4 @@ public class OrderItem {
     public void setStatus(String status) { this.status = status; }
     public Order getOrder() { return order; }
     public void setOrder(Order order) { this.order = order; }
-    public Product getProduct() { return product; }
-public void setProduct(Product product) { this.product = product; }
 }

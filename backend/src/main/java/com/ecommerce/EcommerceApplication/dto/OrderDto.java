@@ -13,13 +13,13 @@ public class OrderDto {
     public BigDecimal subtotal;
     public BigDecimal shippingFee;
     public BigDecimal taxAmount;
-    public BigDecimal discountAmount;
+   
     public BigDecimal totalAmount;
 
     public String shippingAddressJson;
     public String billingAddressJson;
     public String notes;
-
+    public String code;
     public LocalDateTime createdAt;
     public List<OrderItemDto> items;
 

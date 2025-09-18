@@ -3,7 +3,9 @@ package com.ecommerce.EcommerceApplication.service.impl;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -50,74 +52,78 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderDto checkout(Long userId, CheckoutReq req) {
-        // 1) โหลดตะกร้า
+        if (req.shippingAddressJson == null || req.shippingAddressJson.isBlank()) {
+            throw new IllegalArgumentException("shippingAddress is required");
+        }
+
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Cart not found"));
+
         List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
         if (items.isEmpty()) throw new IllegalStateException("Cart is empty");
 
-        // 2) ตรวจ stock + สถานะสินค้า
+        Map<Long, Product> lockedProducts = new HashMap<>();
         BigDecimal subtotal = BigDecimal.ZERO;
         List<OrderItem> orderItems = new ArrayList<>();
 
         for (CartItem ci : items) {
-            Product p = productRepository.findById(ci.getProductId())
-                    .orElseThrow(() -> new IllegalArgumentException("Product not found: " + ci.getProductId()));
+            Product product = lockedProducts.computeIfAbsent(ci.getProductId(), productId ->
+                    productRepository.findByIdForUpdate(productId)
+                            .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId))
+            );
 
-            if (!"active".equalsIgnoreCase(p.getStatus())) {
-                throw new IllegalStateException("Product not available: " + p.getName());
+            if (!"active".equalsIgnoreCase(product.getStatus())) {
+                throw new IllegalStateException("Product not available: " + product.getName());
             }
-            if (p.getStockQuantity() == null || p.getStockQuantity() < ci.getQuantity()) {
-                throw new IllegalStateException("Insufficient stock for: " + p.getName());
+
+            Integer stockQuantity = product.getStockQuantity();
+            if (stockQuantity == null || stockQuantity < ci.getQuantity()) {
+                throw new IllegalStateException("Insufficient stock for: " + product.getName());
             }
 
             BigDecimal lineTotal = ci.getPriceSnapshot().multiply(BigDecimal.valueOf(ci.getQuantity()));
             subtotal = subtotal.add(lineTotal);
 
             OrderItem oi = new OrderItem();
-           
-            oi.setProductName(p.getName());
-            oi.setProductSku(p.getSku());
+            oi.setProductId(product.getId());
+            oi.setShopId(product.getShopId());
+            oi.setProductName(product.getName());
+            oi.setProductSku(product.getSku());
             oi.setUnitPrice(ci.getPriceSnapshot());
             oi.setQuantity(ci.getQuantity());
             oi.setTotalPrice(lineTotal);
             orderItems.add(oi);
+
+            product.setStockQuantity(stockQuantity - ci.getQuantity());
         }
 
-        // 3) คำนวณยอดรวม
-        BigDecimal shipping = (req.shippingFee == null) ? BigDecimal.ZERO : req.shippingFee;
-        BigDecimal tax = (req.taxAmount == null) ? BigDecimal.ZERO : req.taxAmount;
-        BigDecimal discount = (req.discountAmount == null) ? BigDecimal.ZERO : req.discountAmount;
-        BigDecimal total = subtotal.add(shipping).add(tax).subtract(discount);
-        if (total.compareTo(BigDecimal.ZERO) < 0) total = BigDecimal.ZERO;
+        BigDecimal shipping = nz(req.shippingFee);
+        BigDecimal tax = nz(req.taxAmount);
+       
+       BigDecimal total = subtotal.add(shipping).add(tax);
+        if (total.signum() < 0) total = BigDecimal.ZERO;
 
-        // 4) สร้าง Order
         Order order = new Order();
         order.setOrderNumber(generateOrderNumber());
+         // กันพลาดให้มีค่าเสมอ แม้มี trigger/PrePersist แล้ว
         order.setUserId(userId);
         order.setStatus("pending");
         order.setSubtotal(subtotal);
         order.setShippingFee(shipping);
         order.setTaxAmount(tax);
-        order.setDiscountAmount(discount);
+         // <- ฟิลด์นี้แม็ปกับ discount_total แล้วใน Entity
         order.setTotalAmount(total);
         order.setShippingAddress(req.shippingAddressJson);
         order.setBillingAddress(req.billingAddressJson);
         order.setNotes(req.notes);
 
-        // attach items
         for (OrderItem oi : orderItems) {
-            order.addItem(oi); // setOrder(this) ภายใน
+            order.addItem(oi);
         }
 
-        // 5) หัก stock
-        for (CartItem ci : items) {
-            Product p = productRepository.findById(ci.getProductId()).orElseThrow();
-            p.setStockQuantity(p.getStockQuantity() - ci.getQuantity());
-            productRepository.save(p);
+        if (!lockedProducts.isEmpty()) {
+            productRepository.saveAll(lockedProducts.values());
         }
-
-        // 6) บันทึก Order + เคลียร์ตะกร้า
         orderRepository.save(order);
         cartItemRepository.deleteByCartId(cart.getId());
 
@@ -139,13 +145,32 @@ public class OrderServiceImpl implements OrderService {
                 .map(this::toDto);
     }
 
-    // ------- helpers -------
+    @Override
+    public OrderDto updateStatus(Long orderId, String newStatus) {
+        Order o = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        String from = o.getStatus().toLowerCase();
+        String to = newStatus.toLowerCase();
+        boolean ok =
+            (from.equals("pending")   && (to.equals("paid") || to.equals("cancelled"))) ||
+            (from.equals("paid")      && (to.equals("processing") || to.equals("cancelled"))) ||
+            (from.equals("processing")&&  to.equals("shipped")) ||
+            (from.equals("shipped")   &&  to.equals("delivered"));
+        if (!ok) throw new IllegalStateException("Invalid status transition: " + from + " -> " + to);
+
+        o.setStatus(newStatus);
+        orderRepository.save(o);
+        return toDto(o);
+    }
+
+    // -------- helpers --------
     private String generateOrderNumber() {
-        // รูปแบบง่าย: YYYYMMDD-รันไทม์-นับสั้น ๆ
         String date = java.time.LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
         String rand = Integer.toHexString((int)(System.nanoTime() & 0xffff)).toUpperCase();
         return "ORD-" + date + "-" + rand;
     }
+
+    private BigDecimal nz(BigDecimal v) { return v == null ? BigDecimal.ZERO : v; }
 
     private OrderDto toDto(Order o) {
         OrderDto dto = new OrderDto();
@@ -156,17 +181,19 @@ public class OrderServiceImpl implements OrderService {
         dto.subtotal = o.getSubtotal();
         dto.shippingFee = o.getShippingFee();
         dto.taxAmount = o.getTaxAmount();
-        dto.discountAmount = o.getDiscountAmount();
+         // อ่านจาก discount_total
         dto.totalAmount = o.getTotalAmount();
         dto.shippingAddressJson = o.getShippingAddress();
         dto.billingAddressJson = o.getBillingAddress();
         dto.notes = o.getNotes();
         dto.createdAt = o.getCreatedAt();
+        
 
         dto.items = o.getItems().stream().map(oi -> {
             OrderDto.OrderItemDto x = new OrderDto.OrderItemDto();
             x.id = oi.getId();
-           
+            x.productId = oi.getProductId();
+            x.shopId = oi.getShopId();
             x.productName = oi.getProductName();
             x.productSku = oi.getProductSku();
             x.unitPrice = oi.getUnitPrice();
