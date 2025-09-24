@@ -25,7 +25,7 @@ public class Shop {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "seller_user_id", nullable = false)
+    @Column(name = "seller_user_id", nullable = false, unique = true)
     private Long sellerUserId;
 
     @Column(name = "name", nullable = false)

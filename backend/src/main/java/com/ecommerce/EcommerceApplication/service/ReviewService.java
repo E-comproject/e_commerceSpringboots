@@ -1,14 +1,14 @@
 package com.ecommerce.EcommerceApplication.service;
 
-import java.util.List;
-import java.util.Optional;
+import com.ecommerce.EcommerceApplication.dto.ReviewCreateReq;
+import com.ecommerce.EcommerceApplication.dto.ReviewDto;
 
-import com.ecommerce.EcommerceApplication.entity.Review;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface ReviewService {
-    List<Review> listProductReviews(Long productId);
-    Optional<Review> writeReview(Long productId, Long userId, Review review);
-    Optional<Review> approveReview(Long reviewId);
+    ReviewDto create(Long userId, ReviewCreateReq req);
+    Page<ReviewDto> listByProduct(Long productId, Pageable pageable);
+    boolean delete(Long reviewId, Long userId);               // เจ้าของลบเองได้
+    ReviewDto setApproved(Long reviewId, boolean approved);   // สำหรับแอดมิน/ผู้ขาย
 }
-
-

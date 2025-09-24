@@ -3,6 +3,8 @@ package com.ecommerce.EcommerceApplication.entity;
 import java.time.LocalDateTime;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,7 +14,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
 @Entity
@@ -22,150 +23,67 @@ public class Review {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "order_item_id", unique = true)
-    private Long orderItemId;
-
-    @Column(name = "product_id", nullable = false)
-    private Long productId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "rating")
-    private Integer rating;
+    @Column(name = "order_item_id")
+    private Long orderItemId;
+
+    @Column(name = "rating", nullable = false)
+    private Integer rating; // 1..5
 
     @Column(name = "title")
     private String title;
 
-    @Column(name = "body")
-    private String body;
+    @Column(name = "comment")
+    private String comment;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "images", columnDefinition = "jsonb")
-    private String images;
+    private String images; // JSON array of image URLs
+
+    @Column(name = "is_verified")
+    private Boolean isVerified = Boolean.FALSE;
 
     @Column(name = "is_approved")
-    private Boolean isApproved = false;
+    private Boolean isApproved = Boolean.TRUE;
 
     @CreationTimestamp
-    @Column(name = "created_at")
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    // Relationships
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_item_id", insertable = false, updatable = false)
-    private OrderItem orderItem;
+    public Long getId() { return id; }
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", insertable = false, updatable = false)
-    private Product product;
+    public Product getProduct() { return product; }
+    public void setProduct(Product product) { this.product = product; }
 
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
-    // Constructors
-    public Review() {}
+    public Long getOrderItemId() { return orderItemId; }
+    public void setOrderItemId(Long orderItemId) { this.orderItemId = orderItemId; }
 
-    public Review(Long productId, Long userId, Integer rating, String title, String body) {
-        this.productId = productId;
-        this.userId = userId;
-        this.rating = rating;
-        this.title = title;
-        this.body = body;
-    }
+    public Integer getRating() { return rating; }
+    public void setRating(Integer rating) { this.rating = rating; }
 
-    // Getters and Setters
-    public Long getId() {
-        return id;
-    }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getComment() { return comment; }
+    public void setComment(String comment) { this.comment = comment; }
 
-    public Long getOrderItemId() {
-        return orderItemId;
-    }
+    public String getImages() { return images; }
+    public void setImages(String images) { this.images = images; }
 
-    public void setOrderItemId(Long orderItemId) {
-        this.orderItemId = orderItemId;
-    }
+    public Boolean getIsVerified() { return isVerified; }
+    public void setIsVerified(Boolean isVerified) { this.isVerified = isVerified; }
 
-    public Long getProductId() {
-        return productId;
-    }
+    public Boolean getIsApproved() { return isApproved; }
+    public void setIsApproved(Boolean isApproved) { this.isApproved = isApproved; }
 
-    public void setProductId(Long productId) {
-        this.productId = productId;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public Integer getRating() {
-        return rating;
-    }
-
-    public void setRating(Integer rating) {
-        this.rating = rating;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getBody() {
-        return body;
-    }
-
-    public void setBody(String body) {
-        this.body = body;
-    }
-
-    public String getImages() {
-        return images;
-    }
-
-    public void setImages(String images) {
-        this.images = images;
-    }
-
-    public Boolean getIsApproved() {
-        return isApproved;
-    }
-
-    public void setIsApproved(Boolean isApproved) {
-        this.isApproved = isApproved;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public OrderItem getOrderItem() {
-        return orderItem;
-    }
-
-    public void setOrderItem(OrderItem orderItem) {
-        this.orderItem = orderItem;
-    }
-
-    public Product getProduct() {
-        return product;
-    }
-
-    public void setProduct(Product product) {
-        this.product = product;
-    }
-
+    public LocalDateTime getCreatedAt() { return createdAt; }
 }

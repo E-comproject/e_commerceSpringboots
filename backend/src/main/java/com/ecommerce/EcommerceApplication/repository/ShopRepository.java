@@ -9,5 +9,6 @@ import com.ecommerce.EcommerceApplication.entity.Shop;
 public interface ShopRepository extends JpaRepository<Shop, Long> {
     Optional<Shop> findBySlug(String slug);
     boolean existsBySlug(String slug);
+    boolean existsBySellerUserId(Long sellerUserId);
 }
 

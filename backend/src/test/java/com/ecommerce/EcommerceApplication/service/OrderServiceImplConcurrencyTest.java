@@ -1,9 +1,5 @@
 package com.ecommerce.EcommerceApplication.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.math.BigDecimal;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -14,6 +10,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -160,7 +158,7 @@ class OrderServiceImplConcurrencyTest {
         req.billingAddressJson = req.shippingAddressJson;
         req.shippingFee = BigDecimal.ZERO;
         req.taxAmount = BigDecimal.ZERO;
-        req.discountAmount = BigDecimal.ZERO;
+       
         req.notes = "test";
         return req;
     }

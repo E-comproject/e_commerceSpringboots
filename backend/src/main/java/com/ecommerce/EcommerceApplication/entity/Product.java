@@ -107,7 +107,7 @@ public class Product {
 
   
 
-
+   
 
     // -------- Constructors --------
     public Product() {}

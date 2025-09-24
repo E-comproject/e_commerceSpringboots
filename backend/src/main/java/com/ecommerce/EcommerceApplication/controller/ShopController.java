@@ -5,6 +5,7 @@ import java.text.Normalizer;
 import java.util.List;
 import java.util.Locale;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,6 +39,13 @@ public class ShopController {
 
     @PostMapping
     public ResponseEntity<Shop> create(@RequestBody Shop shop) {
+        // จำกัด 1 ร้านต่อ 1 ผู้ขาย
+        if (shop.getSellerUserId() == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        if (repo.existsBySellerUserId(shop.getSellerUserId())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
         // สร้าง slug อัตโนมัติถ้าไม่ส่งมา
         if (shop.getSlug() == null || shop.getSlug().isBlank()) {
             shop.setSlug(slugify(shop.getName()));
