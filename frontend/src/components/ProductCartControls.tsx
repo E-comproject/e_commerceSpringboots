@@ -1,25 +1,38 @@
 'use client'
 
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import AddToCartButton from './AddToCartButton'
-import CartView from './CartView'
+import CartSidebar from './CartSidebar'
 
 type Props = {
   productId: number
   userId?: number
+  redirectToCart?: boolean
 }
 
-export default function ProductCartControls({ productId, userId = 1 }: Props) {
+export default function ProductCartControls({ productId, userId = 1, redirectToCart = false }: Props) {
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
+
+  const handleAdded = () => {
+    if (redirectToCart) {
+      router.push('/cart')
+    } else {
+      setIsOpen(true)
+    }
+  }
 
   return (
     <>
       <AddToCartButton
         productId={productId}
         defaultUserId={userId}
-        onAdded={() => setIsOpen(true)}
+        onAdded={handleAdded}
       />
-      <CartView userId={userId} isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      {!redirectToCart && (
+        <CartSidebar userId={userId} isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      )}
     </>
   )
 }

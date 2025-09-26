@@ -12,9 +12,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.ecommerce.EcommerceApplication.dto.AddToCartReq;
 import com.ecommerce.EcommerceApplication.dto.CartDto;
 import com.ecommerce.EcommerceApplication.dto.CartItemDto;
 import com.ecommerce.EcommerceApplication.entity.Cart;
@@ -47,16 +49,52 @@ public class CartController {
     return ResponseEntity.ok(toDto(cart, items));
 }
 
-    // เพิ่มสินค้าเข้าตะกร้า
+    // เพิ่มสินค้าเข้าตะกร้า (รองรับทั้ง product และ variant)
     @PostMapping("/items")
     public ResponseEntity<CartDto> addItem(@RequestParam Long cartId,
-                                       @RequestParam Long productId,
-                                       @RequestParam int quantity) {
-    cartService.addItem(cartId, productId, quantity);
-    Cart cart = cartService.getCart(cartId);                 // <-- โหลดจริง
-    List<CartItem> items = cartService.listItems(cartId);
-    return ResponseEntity.status(HttpStatus.CREATED).body(toDto(cart, items));
-}
+                                         @RequestBody AddToCartReq request) {
+        try {
+            if (!request.isValid()) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            CartItem addedItem;
+            if (request.hasVariant()) {
+                // Add product variant to cart
+                addedItem = cartService.addItemWithVariant(cartId, request.getProductId(),
+                                                         request.getVariantId(), request.getQuantity());
+            } else {
+                // Add regular product to cart
+                addedItem = cartService.addItem(cartId, request.getProductId(), request.getQuantity());
+            }
+
+            Cart cart = cartService.getCart(cartId);
+            List<CartItem> items = cartService.listItems(cartId);
+            return ResponseEntity.status(HttpStatus.CREATED).body(toDto(cart, items));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // เพิ่มสินค้าแบบเดิม (backward compatibility)
+    @PostMapping("/items/simple")
+    public ResponseEntity<CartDto> addItemSimple(@RequestParam Long cartId,
+                                               @RequestParam Long productId,
+                                               @RequestParam int quantity) {
+        try {
+            cartService.addItem(cartId, productId, quantity);
+            Cart cart = cartService.getCart(cartId);
+            List<CartItem> items = cartService.listItems(cartId);
+            return ResponseEntity.status(HttpStatus.CREATED).body(toDto(cart, items));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
     // เปลี่ยนจำนวน (ถ้า <= 0 จะลบ และส่ง 204)
     @PutMapping("/items/{itemId}")
@@ -118,6 +156,18 @@ public class CartController {
         d.lineTotal = (e.getPriceSnapshot() == null || e.getQuantity() == null)
                 ? BigDecimal.ZERO
                 : e.getPriceSnapshot().multiply(BigDecimal.valueOf(e.getQuantity()));
+
+        // Add variant information if exists
+        if (e.hasVariant()) {
+            d.variantId = e.getVariantId();
+            d.variantSku = e.getVariant() != null ? e.getVariant().getSku() : null;
+            d.variantTitle = e.getVariant() != null ? e.getVariant().getDisplayName() : null;
+            d.productName = e.getDisplayName(); // This will include variant info
+            d.effectiveSku = e.getEffectiveSku(); // Variant SKU if available
+        } else {
+            d.effectiveSku = d.productSku;
+        }
+
         return d;
     }
 }

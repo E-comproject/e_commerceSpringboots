@@ -90,9 +90,10 @@ npm run lint
 
 ### Core Entities
 - **Product**: Product catalog with images, pricing, shop association
+- **ProductVariant**: Product variations (size, color, storage) with individual SKUs and stock
 - **Shop**: Merchant/seller entities that own products
-- **Cart/CartItem**: Shopping cart functionality
-- **Order/OrderItem**: Order processing with concurrency handling
+- **Cart/CartItem**: Shopping cart functionality (supports both products and variants)
+- **Order/OrderItem**: Order processing with concurrency handling (supports both products and variants)
 - **Review**: Product reviews with user ratings
 - **ChatRoom/ChatMessage**: Real-time chat between users
 
@@ -136,3 +137,46 @@ npm run lint
 - Order processing includes concurrency handling to prevent overselling
 - Review system prevents duplicate reviews per user-product combination
 - Chat system supports real-time messaging between users
+
+## Product Variants System
+
+The system supports product variants (e.g., size, color, storage) with the following features:
+
+### Database Tables
+- `product_variants`: Stores variant data with JSONB options field
+- `product_variant_images`: Variant-specific images
+- Updated `cart_items` and `order_items` to support variants
+
+### Key Variant Features
+- **Flexible Options**: JSON-based variant options (color, size, storage, etc.)
+- **Individual Pricing**: Variants can have their own price or inherit from parent
+- **Stock Management**: Each variant tracks its own inventory
+- **SKU Generation**: Auto-generated unique SKUs for variants
+- **Price Ranges**: Products show min/max prices when variants have different prices
+
+### API Endpoints
+- `GET /api/products/{id}/variants` - Get product variants
+- `POST /api/products/{id}/variants` - Create variant
+- `GET /api/products/{id}/variant-options` - Get available options
+- `POST /api/cart/items` - Add variant to cart (supports both products and variants)
+
+### Usage Examples
+```json
+// T-Shirt with size and color variants
+{
+  "variantOptions": {"color": "Red", "size": "M"},
+  "sku": "TSHIRT-RED-M",
+  "price": 299.00,
+  "stockQuantity": 15
+}
+
+// iPhone with storage and color variants
+{
+  "variantOptions": {"storage": "256GB", "color": "Space Black"},
+  "sku": "IP15P-256GB-BLACK",
+  "price": 45900.00,
+  "stockQuantity": 8
+}
+```
+
+See `PRODUCT_VARIANTS_GUIDE.md` for detailed implementation guide and examples.

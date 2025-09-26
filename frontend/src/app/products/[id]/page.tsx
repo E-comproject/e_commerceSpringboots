@@ -1,13 +1,16 @@
-import React from 'react'
+'use client'
+
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { 
-  ArrowLeft, 
-  ShoppingCart, 
-  Heart, 
-  Share2, 
-  Package, 
-  Tag, 
-  Star, 
+import { useRouter } from 'next/navigation'
+import {
+  ArrowLeft,
+  ShoppingCart,
+  Heart,
+  Share2,
+  Package,
+  Tag,
+  Star,
   Shield,
   Truck,
   RotateCcw,
@@ -16,6 +19,10 @@ import {
   XCircle
 } from 'lucide-react'
 import ProductCartControls from '../../../components/ProductCartControls'
+import { ProductVariantSelector } from '../../../components/ProductVariantSelector'
+import { Product, ProductVariant, AddToCartRequest } from '../../../types/product'
+import { CartService } from '../../../lib/cartService'
+import CartSidebar from '../../../components/CartSidebar'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080/api'
 
@@ -30,6 +37,17 @@ type ProductDto = {
   stockQuantity?: number
   categoryId?: number
   shopId?: number
+  hasVariants?: boolean
+  minPrice?: number
+  maxPrice?: number
+  totalStock?: number
+  variants?: ProductVariant[]
+  ratingAvg?: number
+  ratingCount?: number
+  weightGram?: number
+  status?: string
+  createdAt?: string
+  images?: any[]
 }
 
 async function fetchProduct(id: string): Promise<ProductDto | null> {
@@ -42,10 +60,84 @@ async function fetchProduct(id: string): Promise<ProductDto | null> {
   }
 }
 
-export default async function ProductDetailPage({ params }: { params: { id: string } }) {
-  const product = await fetchProduct(params.id)
+async function fetchProductVariants(id: string): Promise<ProductVariant[]> {
+  try {
+    const res = await fetch(`${API_BASE}/products/${id}/variants`, { cache: 'no-store' })
+    if (!res.ok) return []
+    return res.json()
+  } catch {
+    return []
+  }
+}
 
-  if (!product) {
+export default function ProductDetailPage({ params }: { params: { id: string } }) {
+  const router = useRouter()
+  const [product, setProduct] = useState<ProductDto | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [cartSidebarOpen, setCartSidebarOpen] = useState(false)
+
+  useEffect(() => {
+    async function loadProduct() {
+      try {
+        setLoading(true)
+        const [productData, variants] = await Promise.all([
+          fetchProduct(params.id),
+          fetchProductVariants(params.id)
+        ])
+
+        if (!productData) {
+          setError('Product not found')
+          return
+        }
+
+        // Merge variants into product if they exist
+        if (variants.length > 0) {
+          productData.variants = variants
+          productData.hasVariants = true
+
+          // Calculate price range from variants
+          const prices = variants.map(v => v.effectivePrice || v.price)
+          productData.minPrice = Math.min(...prices)
+          productData.maxPrice = Math.max(...prices)
+          productData.totalStock = variants.reduce((sum, v) => sum + v.stockQuantity, 0)
+        }
+
+        setProduct(productData)
+      } catch (err) {
+        setError('Failed to load product')
+        console.error('Error loading product:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadProduct()
+  }, [params.id])
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-gray-50">
+        <div className="mx-auto max-w-6xl p-6">
+          <div className="flex items-center gap-4 mb-8">
+            <Link
+              href="/"
+              className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              กลับหน้าหลัก
+            </Link>
+          </div>
+          <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">กำลังโหลดข้อมูลสินค้า...</p>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  if (error || !product) {
     return (
       <main className="min-h-screen bg-gray-50">
         <div className="mx-auto max-w-6xl p-6">
@@ -80,19 +172,37 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
     )
   }
 
-  const hasDiscount = product.comparePrice && product.comparePrice > product.price
-  const discountPercentage = hasDiscount 
-    ? Math.round(((product.comparePrice! - product.price) / product.comparePrice!) * 100)
+  // For variant products, use min price for discount calculation
+  const effectivePrice = product.hasVariants ? (product.minPrice ?? product.price) : product.price
+  const effectiveComparePrice = product.comparePrice
+
+  const hasDiscount = effectiveComparePrice && effectiveComparePrice > effectivePrice
+  const discountPercentage = hasDiscount
+    ? Math.round(((effectiveComparePrice! - effectivePrice) / effectiveComparePrice!) * 100)
     : 0
 
   const getStockStatus = () => {
-    if (product.stockQuantity === undefined) return null
-    if (product.stockQuantity === 0) return 'out'
-    if (product.stockQuantity <= 5) return 'low'
+    const stockQuantity = product.hasVariants ? (product.totalStock ?? 0) : (product.stockQuantity ?? 0)
+    if (stockQuantity === 0) return 'out'
+    if (stockQuantity <= 5) return 'low'
     return 'available'
   }
 
   const stockStatus = getStockStatus()
+
+  // Convert ProductDto to Product type for components
+  const productForSelector: Product = {
+    ...product,
+    shopId: product.shopId ?? 0,
+    categoryId: product.categoryId ?? 0,
+    stockQuantity: product.stockQuantity ?? 0,
+    hasVariants: product.hasVariants ?? false,
+    ratingAvg: product.ratingAvg ?? 0,
+    ratingCount: product.ratingCount ?? 0,
+    status: (product.status as 'active' | 'inactive' | 'draft') ?? 'active',
+    createdAt: product.createdAt ?? new Date().toISOString(),
+    images: product.images ?? []
+  }
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -180,18 +290,24 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
             {/* Price */}
             <div className="space-y-2">
               <div className="flex items-baseline gap-3">
-                <span className="text-4xl font-bold text-gray-900">
-                  ฿{Number(product.price).toLocaleString()}
-                </span>
+                {product.hasVariants ? (
+                  <span className="text-4xl font-bold text-gray-900">
+                    ฿{Number(product.minPrice).toLocaleString()} - ฿{Number(product.maxPrice).toLocaleString()}
+                  </span>
+                ) : (
+                  <span className="text-4xl font-bold text-gray-900">
+                    ฿{Number(product.price).toLocaleString()}
+                  </span>
+                )}
                 {hasDiscount && (
                   <span className="text-xl line-through text-gray-400">
-                    ฿{Number(product.comparePrice!).toLocaleString()}
+                    ฿{Number(effectiveComparePrice!).toLocaleString()}
                   </span>
                 )}
               </div>
               {hasDiscount && (
                 <p className="text-green-600 font-medium">
-                  ประหยัด ฿{Number(product.comparePrice! - product.price).toLocaleString()}
+                  ประหยัด ฿{Number(effectiveComparePrice! - effectivePrice).toLocaleString()}
                 </p>
               )}
             </div>
@@ -208,7 +324,11 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
               <div className="flex items-center gap-3">
                 <Package className="h-5 w-5 text-gray-400" />
                 <span className="text-gray-600">
-                  สต็อก: {product.stockQuantity !== undefined ? `${product.stockQuantity} ชิ้น` : 'ไม่ระบุ'}
+                  สต็อก: {product.hasVariants
+                    ? `${product.totalStock ?? 0} ชิ้น (รวมทุกรูปแบบ)`
+                    : product.stockQuantity !== undefined
+                      ? `${product.stockQuantity} ชิ้น`
+                      : 'ไม่ระบุ'}
                 </span>
               </div>
 
@@ -226,27 +346,53 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                 <AlertCircle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium text-orange-800">เหลือไม่เยอะแล้ว!</p>
-                  <p className="text-sm text-orange-700">สินค้าชิ้นนี้เหลือเพียง {product.stockQuantity} ชิ้น</p>
+                  <p className="text-sm text-orange-700">
+                    สินค้าชิ้นนี้เหลือเพียง {product.hasVariants ? product.totalStock : product.stockQuantity} ชิ้น
+                  </p>
                 </div>
               </div>
             )}
 
-            {/* Action Buttons */}
-            <div className="space-y-3">
-              {stockStatus === 'out' ? (
-                <button 
-                  disabled
-                  className={`w-full py-4 px-6 rounded-xl font-bold text-lg bg-gray-200 text-gray-400 cursor-not-allowed`}
-                >
-                  สินค้าหมด
-                </button>
+            {/* Variant Selection and Action Buttons */}
+            <div className="space-y-6">
+              {product.hasVariants ? (
+                <ProductVariantSelector
+                  product={productForSelector}
+                  onAddToCart={async (request: AddToCartRequest) => {
+                    try {
+                      console.log('Adding to cart:', request)
+                      await CartService.addToCart(request, 1) // Using default userId = 1
+                      console.log('Successfully added to cart, opening sidebar...')
+                      // Open cart sidebar after successful addition
+                      setCartSidebarOpen(true)
+                    } catch (error) {
+                      console.error('Failed to add to cart:', error)
+                      alert(`เกิดข้อผิดพลาด: ${error instanceof Error ? error.message : 'ไม่สามารถเพิ่มสินค้าลงตะกร้าได้'}`)
+                    }
+                  }}
+                  onVariantChange={(variantId) => {
+                    // Handle variant change if needed for analytics or other purposes
+                    console.log('Variant changed:', variantId)
+                  }}
+                />
               ) : (
-                <ProductCartControls productId={product.id} />
-              )}
+                <div className="space-y-3">
+                  {stockStatus === 'out' ? (
+                    <button
+                      disabled
+                      className="w-full py-4 px-6 rounded-xl font-bold text-lg bg-gray-200 text-gray-400 cursor-not-allowed"
+                    >
+                      สินค้าหมด
+                    </button>
+                  ) : (
+                    <ProductCartControls productId={product.id} redirectToCart={false} />
+                  )}
 
-              <button className="w-full py-3 px-6 border-2 border-blue-600 text-blue-600 rounded-xl font-medium hover:bg-blue-50 transition-colors">
-                ซื้อทันที
-              </button>
+                  <button className="w-full py-3 px-6 border-2 border-blue-600 text-blue-600 rounded-xl font-medium hover:bg-blue-50 transition-colors">
+                    ซื้อทันที
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Shipping & Service Info */}
@@ -301,6 +447,13 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
             กลับไปเลือกสินค้าอื่น
           </Link>
         </div>
+
+        {/* Cart Sidebar */}
+        <CartSidebar
+          isOpen={cartSidebarOpen}
+          onClose={() => setCartSidebarOpen(false)}
+          userId={1}
+        />
       </div>
     </main>
   )

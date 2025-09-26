@@ -13,6 +13,8 @@ import org.hibernate.type.SqlTypes;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -35,8 +37,9 @@ public class Order {
     @Column(name = "user_id")
     private Long userId;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private String status = "pending";
+    private OrderStatus status = OrderStatus.PENDING;
 
     // Amounts
     @Column(name = "subtotal", precision = 12, scale = 2, nullable = false)
@@ -77,6 +80,14 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
 
+    // Payments
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Payment> payments = new ArrayList<>();
+
+    // Status History
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderStatusHistory> statusHistory = new ArrayList<>();
+
     // ===== getters / setters / helpers =====
     public Long getId() { return id; }
 
@@ -86,8 +97,8 @@ public class Order {
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public OrderStatus getStatus() { return status; }
+    public void setStatus(OrderStatus status) { this.status = status; }
 
     public BigDecimal getSubtotal() { return subtotal; }
     public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }
@@ -118,8 +129,128 @@ public class Order {
     public List<OrderItem> getItems() { return items; }
     public void setItems(List<OrderItem> items) { this.items = items; }
 
+    public List<Payment> getPayments() { return payments; }
+    public void setPayments(List<Payment> payments) { this.payments = payments; }
+
+    public List<OrderStatusHistory> getStatusHistory() { return statusHistory; }
+    public void setStatusHistory(List<OrderStatusHistory> statusHistory) { this.statusHistory = statusHistory; }
+
     public void addItem(OrderItem item) {
         item.setOrder(this);
         this.items.add(item);
+    }
+
+    public void addPayment(Payment payment) {
+        payment.setOrder(this);
+        this.payments.add(payment);
+    }
+
+    public void addStatusHistory(OrderStatusHistory history) {
+        history.setOrder(this);
+        this.statusHistory.add(history);
+    }
+
+    /**
+     * Check if order is fully paid
+     */
+    public boolean isFullyPaid() {
+        BigDecimal totalPaid = payments.stream()
+            .filter(p -> "COMPLETED".equals(p.getStatus().name()))
+            .map(Payment::getAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return totalPaid.compareTo(this.totalAmount) >= 0;
+    }
+
+    /**
+     * Change order status with validation and history tracking
+     */
+    public boolean changeStatus(OrderStatus newStatus, String reason, Long userId, String role) {
+        if (this.status == null) {
+            this.status = OrderStatus.PENDING;
+        }
+
+        // Validate transition
+        if (!this.status.canTransitionTo(newStatus)) {
+            return false;
+        }
+
+        OrderStatus previousStatus = this.status;
+        this.status = newStatus;
+
+        // Add history record
+        OrderStatusHistory history = OrderStatusHistory.createUserChange(
+            this, previousStatus, newStatus, reason, userId, role
+        );
+        this.addStatusHistory(history);
+
+        return true;
+    }
+
+    /**
+     * Change order status automatically (system-triggered)
+     */
+    public boolean changeStatusAutomatically(OrderStatus newStatus, String reason) {
+        if (this.status == null) {
+            this.status = OrderStatus.PENDING;
+        }
+
+        // Validate transition
+        if (!this.status.canTransitionTo(newStatus)) {
+            return false;
+        }
+
+        OrderStatus previousStatus = this.status;
+        this.status = newStatus;
+
+        // Add history record
+        OrderStatusHistory history = OrderStatusHistory.createSystemChange(
+            this, previousStatus, newStatus, reason
+        );
+        this.addStatusHistory(history);
+
+        return true;
+    }
+
+    /**
+     * Get current status display name
+     */
+    public String getStatusDisplayName() {
+        return status != null ? status.getDisplayName() : "Unknown";
+    }
+
+    /**
+     * Get current status Thai name
+     */
+    public String getStatusThaiName() {
+        return status != null ? status.getThaiName() : "ไม่ทราบสถานะ";
+    }
+
+    /**
+     * Check if order can be cancelled
+     */
+    public boolean canBeCancelled() {
+        return status != null && status.canTransitionTo(OrderStatus.CANCELLED);
+    }
+
+    /**
+     * Check if order requires payment
+     */
+    public boolean requiresPayment() {
+        return status != null && status.requiresPayment();
+    }
+
+    /**
+     * Check if order is in progress
+     */
+    public boolean isInProgress() {
+        return status != null && status.isInProgress();
+    }
+
+    /**
+     * Check if order is completed successfully
+     */
+    public boolean isSuccessfullyCompleted() {
+        return status != null && status.isSuccessfullyCompleted();
     }
 }

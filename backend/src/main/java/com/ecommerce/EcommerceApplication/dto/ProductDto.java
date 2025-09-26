@@ -22,6 +22,13 @@ public class ProductDto {
     public LocalDateTime createdAt;
 
     public List<ProductImageDto> images;
+    public List<ProductVariantDto> variants;
+
+    // Variant-related fields
+    public boolean hasVariants;
+    public BigDecimal minPrice;
+    public BigDecimal maxPrice;
+    public Integer totalStock;
 }
 
 

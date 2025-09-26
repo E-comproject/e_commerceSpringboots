@@ -18,6 +18,7 @@ import com.ecommerce.EcommerceApplication.entity.Cart;
 import com.ecommerce.EcommerceApplication.entity.CartItem;
 import com.ecommerce.EcommerceApplication.entity.Order;
 import com.ecommerce.EcommerceApplication.entity.OrderItem;
+import com.ecommerce.EcommerceApplication.entity.OrderStatus;
 import com.ecommerce.EcommerceApplication.entity.Product;
 import com.ecommerce.EcommerceApplication.repository.CartItemRepository;
 import com.ecommerce.EcommerceApplication.repository.CartRepository;
@@ -107,7 +108,7 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderNumber(generateOrderNumber());
          // กันพลาดให้มีค่าเสมอ แม้มี trigger/PrePersist แล้ว
         order.setUserId(userId);
-        order.setStatus("pending");
+        order.setStatus(OrderStatus.PENDING);
         order.setSubtotal(subtotal);
         order.setShippingFee(shipping);
         order.setTaxAmount(tax);
@@ -149,16 +150,13 @@ public class OrderServiceImpl implements OrderService {
     public OrderDto updateStatus(Long orderId, String newStatus) {
         Order o = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
-        String from = o.getStatus().toLowerCase();
-        String to = newStatus.toLowerCase();
-        boolean ok =
-            (from.equals("pending")   && (to.equals("paid") || to.equals("cancelled"))) ||
-            (from.equals("paid")      && (to.equals("processing") || to.equals("cancelled"))) ||
-            (from.equals("processing")&&  to.equals("shipped")) ||
-            (from.equals("shipped")   &&  to.equals("delivered"));
-        if (!ok) throw new IllegalStateException("Invalid status transition: " + from + " -> " + to);
+        OrderStatus newOrderStatus = OrderStatus.fromString(newStatus);
 
-        o.setStatus(newStatus);
+        if (!o.getStatus().canTransitionTo(newOrderStatus)) {
+            throw new IllegalStateException("Invalid status transition: " + o.getStatus() + " -> " + newOrderStatus);
+        }
+
+        o.setStatus(newOrderStatus);
         orderRepository.save(o);
         return toDto(o);
     }
@@ -177,7 +175,7 @@ public class OrderServiceImpl implements OrderService {
         dto.id = o.getId();
         dto.orderNumber = o.getOrderNumber();
         dto.userId = o.getUserId();
-        dto.status = o.getStatus();
+        dto.status = o.getStatus().name();
         dto.subtotal = o.getSubtotal();
         dto.shippingFee = o.getShippingFee();
         dto.taxAmount = o.getTaxAmount();

@@ -15,33 +15,34 @@ export default function AddToCartButton({ productId, defaultUserId = 1, onAdded 
   const [message, setMessage] = useState<string>('')
 
   const addToCart = async () => {
+    console.log('AddToCartButton: Starting addToCart for product:', productId)
     setLoading(true)
     setMessage('')
     try {
+      console.log('AddToCartButton: Fetching cart for user:', defaultUserId)
       const cartRes = await fetch(`${API_BASE}/cart?userId=${defaultUserId}`, { cache: 'no-store' })
       if (!cartRes.ok) throw new Error(`โหลดตะกร้าไม่สำเร็จ: ${cartRes.status}`)
       const cart = await cartRes.json()
+      console.log('AddToCartButton: Cart response:', cart)
       const cartId = cart?.id || cart?.cartId || cart?.data?.id
       if (!cartId) throw new Error('ไม่พบ cartId จาก API')
 
-      const form = new URLSearchParams()
-      form.set('cartId', String(cartId))
-      form.set('productId', String(productId))
-      form.set('quantity', '1')
-
-      const addRes = await fetch(`${API_BASE}/cart/items`, {
+      console.log('AddToCartButton: Adding to cart with params - cartId:', cartId, 'productId:', productId)
+      const addRes = await fetch(`${API_BASE}/cart/items/simple?cartId=${cartId}&productId=${productId}&quantity=1`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: form.toString(),
+        headers: { 'Content-Type': 'application/json' },
       })
       if (!addRes.ok) {
         const text = await addRes.text()
+        console.log('AddToCartButton: Add to cart failed:', addRes.status, text)
         throw new Error(`เพิ่มสินค้าไม่สำเร็จ: ${addRes.status} ${text}`)
       }
 
+      console.log('AddToCartButton: Successfully added to cart')
       setMessage('เพิ่มสินค้าลงตะกร้าสำเร็จ')
       onAdded?.()
     } catch (err: any) {
+      console.error('AddToCartButton: Error:', err)
       setMessage(err?.message || 'เกิดข้อผิดพลาด')
     } finally {
       setLoading(false)

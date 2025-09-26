@@ -13,19 +13,24 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ecommerce.EcommerceApplication.dto.ProductDto;
 import com.ecommerce.EcommerceApplication.dto.ProductImageDto;
+import com.ecommerce.EcommerceApplication.dto.ProductVariantDto;
 import com.ecommerce.EcommerceApplication.entity.Product;
 import com.ecommerce.EcommerceApplication.entity.ProductImage;
+import com.ecommerce.EcommerceApplication.entity.ProductVariant;
 import com.ecommerce.EcommerceApplication.repository.ProductRepository;
 import com.ecommerce.EcommerceApplication.service.ProductService;
+import com.ecommerce.EcommerceApplication.service.ProductVariantService;
 
 @Service
 @Transactional
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository repo;
+    private final ProductVariantService variantService;
 
-    public ProductServiceImpl(ProductRepository repo) {
+    public ProductServiceImpl(ProductRepository repo, ProductVariantService variantService) {
         this.repo = repo;
+        this.variantService = variantService;
     }
 
     @Override
@@ -173,6 +178,49 @@ public class ProductServiceImpl implements ProductService {
                 return idto;
             }).toList();
         }
+
+        // Add variant-related data
+        if (p.getVariants() != null && !p.getVariants().isEmpty()) {
+            dto.hasVariants = true;
+            dto.variants = p.getVariants().stream().map(this::convertVariantToDto).toList();
+            dto.totalStock = p.getTotalStock();
+            dto.minPrice = p.getMinPrice();
+            dto.maxPrice = p.getMaxPrice();
+        } else {
+            dto.hasVariants = false;
+            dto.totalStock = p.getStockQuantity();
+            dto.minPrice = p.getPrice();
+            dto.maxPrice = p.getPrice();
+        }
+
+        return dto;
+    }
+
+    private ProductVariantDto convertVariantToDto(ProductVariant variant) {
+        ProductVariantDto dto = new ProductVariantDto();
+        dto.setId(variant.getId());
+        dto.setProductId(variant.getProductId());
+        dto.setSku(variant.getSku());
+        dto.setVariantTitle(variant.getVariantTitle());
+        dto.setVariantOptions(variant.getVariantOptions());
+        dto.setPrice(variant.getPrice());
+        dto.setComparePrice(variant.getComparePrice());
+        dto.setEffectivePrice(variant.getEffectivePrice());
+        dto.setStockQuantity(variant.getStockQuantity());
+        dto.setWeightGram(variant.getWeightGram());
+        dto.setStatus(variant.getStatus());
+        dto.setPosition(variant.getPosition());
+        dto.setAvailable(variant.isAvailable());
+        dto.setDisplayName(variant.getDisplayName());
+        dto.setCreatedAt(variant.getCreatedAt());
+        dto.setUpdatedAt(variant.getUpdatedAt());
+
+        if (variant.getImages() != null && !variant.getImages().isEmpty()) {
+            dto.setImageUrls(variant.getImages().stream()
+                    .map(img -> img.getImageUrl())
+                    .toList());
+        }
+
         return dto;
     }
 }

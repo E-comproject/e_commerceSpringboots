@@ -11,4 +11,10 @@ public class CartItemDto {
     public BigDecimal unitPrice;   // = priceSnapshot
     public Integer quantity;
     public BigDecimal lineTotal;   // unitPrice * quantity
+
+    // Variant-related fields
+    public Long variantId;
+    public String variantSku;
+    public String variantTitle;
+    public String effectiveSku;    // variantSku if available, otherwise productSku
 }

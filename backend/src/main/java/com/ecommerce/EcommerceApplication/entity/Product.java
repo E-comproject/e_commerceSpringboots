@@ -105,9 +105,12 @@ public class Product {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Review> reviews = new HashSet<>();
 
-  
+    // Product variants
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference("product-variants")
+    private List<ProductVariant> variants = new ArrayList<>();
 
-   
+
 
     // -------- Constructors --------
     public Product() {}
@@ -205,4 +208,92 @@ public void setProduct(Product product) { this.product = product; }
 
     public Set<Review> getReviews() { return reviews; }
     public void setReviews(Set<Review> reviews) { this.reviews = reviews; }
+
+    public List<ProductVariant> getVariants() { return variants; }
+    public void setVariants(List<ProductVariant> variants) {
+        this.variants.clear();
+        if (variants != null) {
+            for (ProductVariant variant : variants) {
+                addVariant(variant);
+            }
+        }
+    }
+
+    // -------- Variant Management Methods --------
+
+    public void addVariant(ProductVariant variant) {
+        if (variant == null) return;
+        variant.setProduct(this);
+        this.variants.add(variant);
+    }
+
+    public void removeVariant(ProductVariant variant) {
+        if (variant == null) return;
+        this.variants.remove(variant);
+        variant.setProduct(null);
+    }
+
+    /**
+     * Check if product has variants
+     */
+    public boolean hasVariants() {
+        return variants != null && !variants.isEmpty();
+    }
+
+    /**
+     * Get total stock from all variants (if has variants) or own stock
+     */
+    public Integer getTotalStock() {
+        if (hasVariants()) {
+            return variants.stream()
+                .filter(v -> "active".equals(v.getStatus()))
+                .mapToInt(v -> v.getStockQuantity() != null ? v.getStockQuantity() : 0)
+                .sum();
+        }
+        return stockQuantity != null ? stockQuantity : 0;
+    }
+
+    /**
+     * Get minimum price from variants or own price
+     */
+    public BigDecimal getMinPrice() {
+        if (hasVariants()) {
+            return variants.stream()
+                .filter(v -> "active".equals(v.getStatus()))
+                .map(ProductVariant::getEffectivePrice)
+                .min(BigDecimal::compareTo)
+                .orElse(price);
+        }
+        return price;
+    }
+
+    /**
+     * Get maximum price from variants or own price
+     */
+    public BigDecimal getMaxPrice() {
+        if (hasVariants()) {
+            return variants.stream()
+                .filter(v -> "active".equals(v.getStatus()))
+                .map(ProductVariant::getEffectivePrice)
+                .max(BigDecimal::compareTo)
+                .orElse(price);
+        }
+        return price;
+    }
+
+    /**
+     * Check if product is available for purchase
+     */
+    public boolean isAvailable() {
+        if (!status.equals("active")) {
+            return false;
+        }
+
+        if (hasVariants()) {
+            return variants.stream()
+                .anyMatch(ProductVariant::isAvailable);
+        }
+
+        return stockQuantity != null && stockQuantity > 0;
+    }
 }

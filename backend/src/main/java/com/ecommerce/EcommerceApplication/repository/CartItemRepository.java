@@ -18,6 +18,11 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     boolean existsByCartIdAndProductId(Long cartId, Long productId);
     Optional<CartItem> findByCartIdAndProductId(Long cartId, Long productId);
 
+    // หา/เช็คสินค้า variants ที่ซ้ำในตะกร้า
+    Optional<CartItem> findByCartIdAndProductIdAndVariantId(Long cartId, Long productId, Long variantId);
+    Optional<CartItem> findByCartIdAndVariantId(Long cartId, Long variantId);
+    boolean existsByCartIdAndVariantId(Long cartId, Long variantId);
+
     // ลบแบบผูก cartId ให้ปลอดภัยและอะตอมมิก
     long deleteByIdAndCartId(Long itemId, Long cartId);
 
