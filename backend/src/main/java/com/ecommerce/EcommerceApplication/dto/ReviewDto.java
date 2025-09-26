@@ -13,6 +13,7 @@ public class ReviewDto {
     public String comment;
     public List<String> images; // แปลงจาก/เป็น JSON array
     public Boolean isVerified;
-    public Boolean isApproved;
+    public String shopReply;
+    public LocalDateTime shopReplyAt;
     public LocalDateTime createdAt;
 }

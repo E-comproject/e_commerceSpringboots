@@ -24,14 +24,27 @@ public class ChatWsController {
     // Client ส่งที่ /app/chat.send
     @MessageMapping("/chat.send")
     public void onSend(ChatSendFrame frame) {
+        long threadId = Thread.currentThread().getId();
+        String sessionInfo = frame.toString();
+        System.out.println("🔄 [THREAD-" + threadId + "] onSend() CALLED with: " + sessionInfo);
+        System.out.println("🔄 [THREAD-" + threadId + "] Stack trace:");
+        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+        for (int i = 1; i <= Math.min(5, stack.length - 1); i++) {
+            System.out.println("    " + i + ". " + stack[i]);
+        }
+
         SendMessageReq req = new SendMessageReq();
         req.content = frame.content;
         req.attachments = frame.attachments;
 
+        System.out.println("💾 [THREAD-" + threadId + "] Calling chatService.sendMessage()...");
         ChatMessageDto saved = chatService.sendMessage(frame.roomId, frame.senderUserId, frame.role, req);
+        System.out.println("✅ [THREAD-" + threadId + "] Message saved with ID: " + saved.id);
 
         // broadcast ให้ห้องนี้
+        System.out.println("📡 [THREAD-" + threadId + "] Broadcasting to /topic/chat/" + saved.roomId);
         template.convertAndSend("/topic/chat/" + saved.roomId, saved);
+        System.out.println("✅ [THREAD-" + threadId + "] onSend() COMPLETED");
     }
 
     // Client ส่งที่ /app/chat.read

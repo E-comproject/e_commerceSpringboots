@@ -13,6 +13,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -96,35 +97,35 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional(readOnly = true)
     public Page<ReviewDto> listByProduct(Long productId, Pageable pageable) {
-        return reviewRepo.findByProduct_IdAndIsApprovedTrueOrderByCreatedAtDesc(productId, pageable)
+        return reviewRepo.findByProduct_IdOrderByCreatedAtDesc(productId, pageable)
                 .map(this::toDto);
     }
 
     @Override
-    public boolean delete(Long reviewId, Long userId) {
-        Review review = reviewRepo.findById(reviewId).orElse(null);
-        if (review == null) return false;
-        if (!review.getUserId().equals(userId)) return false; // owner-only; moderators handled elsewhere
-        Long productId = review.getProduct().getId();
-        reviewRepo.delete(review);
-        refreshProductRating(productId);
-        return true;
-    }
+    public ReviewDto addShopReply(Long reviewId, Long shopId, String replyText) {
+        if (replyText == null || replyText.trim().isEmpty()) {
+            throw new IllegalArgumentException("Reply text cannot be empty");
+        }
 
-    @Override
-    public ReviewDto setApproved(Long reviewId, boolean approved) {
         Review review = reviewRepo.findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("Review not found"));
-        review.setIsApproved(approved);
+
+        // ตรวจสอบว่าเป็นเจ้าของร้านหรือไม่
+        if (!review.getProduct().getShop().getId().equals(shopId)) {
+            throw new IllegalArgumentException("Only shop owner can reply to review");
+        }
+
+        review.setShopReply(replyText.trim());
+        review.setShopReplyAt(LocalDateTime.now());
         reviewRepo.save(review);
-        refreshProductRating(review.getProduct().getId());
+
         return toDto(review);
     }
 
     // ---------- helpers ----------
     private void refreshProductRating(Long productId) {
-        Double avg = reviewRepo.avgApprovedRating(productId);
-        Long cnt = reviewRepo.countByProduct_IdAndIsApprovedTrue(productId);
+        Double avg = reviewRepo.avgRatingByProduct(productId);
+        Long cnt = reviewRepo.countByProduct_Id(productId);
 
         Product product = productRepo.findById(productId).orElseThrow();
         product.setRatingAvg(BigDecimal.valueOf(avg == null ? 0.0 : avg).setScale(2, BigDecimal.ROUND_HALF_UP));
@@ -142,7 +143,8 @@ public class ReviewServiceImpl implements ReviewService {
         dto.title = review.getTitle();
         dto.comment = review.getComment();
         dto.isVerified = review.getIsVerified();
-        dto.isApproved = review.getIsApproved();
+        dto.shopReply = review.getShopReply();
+        dto.shopReplyAt = review.getShopReplyAt();
         dto.createdAt = review.getCreatedAt();
 
         try {

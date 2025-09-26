@@ -13,7 +13,11 @@ public class SecurityConfig {
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
+            .headers(headers -> headers.frameOptions().disable())
+            .authorizeHttpRequests(reg -> reg
+                .requestMatchers("/ws-chat/**").permitAll()
+                .requestMatchers("/api/**").permitAll()
+                .anyRequest().permitAll())
             .httpBasic(Customizer.withDefaults());
         return http.build();
     }

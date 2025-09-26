@@ -49,8 +49,11 @@ public class Review {
     @Column(name = "is_verified")
     private Boolean isVerified = Boolean.FALSE;
 
-    @Column(name = "is_approved")
-    private Boolean isApproved = Boolean.TRUE;
+    @Column(name = "shop_reply")
+    private String shopReply;
+
+    @Column(name = "shop_reply_at")
+    private LocalDateTime shopReplyAt;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -82,8 +85,11 @@ public class Review {
     public Boolean getIsVerified() { return isVerified; }
     public void setIsVerified(Boolean isVerified) { this.isVerified = isVerified; }
 
-    public Boolean getIsApproved() { return isApproved; }
-    public void setIsApproved(Boolean isApproved) { this.isApproved = isApproved; }
+    public String getShopReply() { return shopReply; }
+    public void setShopReply(String shopReply) { this.shopReply = shopReply; }
+
+    public LocalDateTime getShopReplyAt() { return shopReplyAt; }
+    public void setShopReplyAt(LocalDateTime shopReplyAt) { this.shopReplyAt = shopReplyAt; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

@@ -52,20 +52,13 @@ public class ReviewController {
         return service.listByProduct(productId, PageRequest.of(page, size));
     }
 
-    // เจ้าของรีวิวลบเอง
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id, @RequestParam Long userId) {
-        return service.delete(id, userId) ? ResponseEntity.noContent().build()
-                                          : ResponseEntity.notFound().build();
-    }
-
-    // อนุมัติ/ซ่อนรีวิว (สำหรับ admin/seller)
-    @PutMapping("/{id}/approve")
-    public ResponseEntity<?> approve(@PathVariable Long id, @RequestParam boolean approved) {
+    // ร้านค้าตอบกลับรีวิว
+    @PostMapping("/{id}/reply")
+    public ResponseEntity<?> reply(@PathVariable Long id, @RequestParam Long shopId, @RequestBody String replyText) {
         try {
-            return ResponseEntity.ok(service.setApproved(id, approved));
+            return ResponseEntity.ok(service.addShopReply(id, shopId, replyText));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 }

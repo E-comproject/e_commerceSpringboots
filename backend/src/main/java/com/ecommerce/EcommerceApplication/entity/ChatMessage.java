@@ -3,6 +3,8 @@ package com.ecommerce.EcommerceApplication.entity;
 import java.time.LocalDateTime;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -32,6 +34,7 @@ public class ChatMessage {
     private String content;
 
     @Column(name = "attachments", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String attachments; // JSON array string ของ URL/ไฟล์แนบ
 
     @Column(name = "is_read")
