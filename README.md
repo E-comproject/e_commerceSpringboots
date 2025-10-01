@@ -19,7 +19,8 @@ E-com_project/
 
 **ก่อนเริ่มต้น**: ตรวจสอบว่า Docker Desktop รันอยู่
 ```bash
-scripts/check-docker.bat
+scripts/
+
 ```
 
 **เริ่มต้นฐานข้อมูล**:

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import '@/styles/globals/globals.css'
+import Navigation from '@/components/Navigation'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -16,7 +17,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="th">
+      <head>
+        <script src="https://cdn.omise.co/omise.js"></script>
+      </head>
       <body className={inter.className}>
+        <Navigation />
         <main className="min-h-screen bg-gray-50">
           {children}
         </main>

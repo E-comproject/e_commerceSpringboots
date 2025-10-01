@@ -20,16 +20,19 @@ public class ShopController {
 
     private final ShopService shopService;
 
+    // Public
     @GetMapping("/shops")
     public ResponseEntity<List<ShopResponse>> listActive() {
         return ResponseEntity.ok(shopService.listActive());
     }
 
+    // Public
     @GetMapping("/shops/{id}")
     public ResponseEntity<ShopResponse> get(@PathVariable Long id) {
         return ResponseEntity.ok(shopService.get(id));
     }
 
+    // Seller creates own shop (ควบคุม 1 ผู้ขาย 1 ร้าน ใน service)
     @PreAuthorize("hasRole('SELLER')")
     @PostMapping("/seller/shops")
     public ResponseEntity<ShopResponse> create(
@@ -38,16 +41,18 @@ public class ShopController {
         return ResponseEntity.ok(shopService.create(userId, req));
     }
 
+    // Seller/Admin updates
     @PreAuthorize("hasAnyRole('SELLER','ADMIN')")
     @PutMapping("/seller/shops/{id}")
     public ResponseEntity<ShopResponse> update(
             @AuthenticationPrincipal Long userId,
             @PathVariable Long id,
             @RequestBody ShopUpdateRequest req) {
-        boolean isAdmin = false;
+        boolean isAdmin = false; // ให้ service ตัดสินใจเพิ่มได้ภายหลังถ้าต้อง
         return ResponseEntity.ok(shopService.update(userId, id, req, isAdmin));
     }
 
+    // Admin suspend
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/admin/shops/{id}/suspend")
     public ResponseEntity<ShopResponse> suspend(
