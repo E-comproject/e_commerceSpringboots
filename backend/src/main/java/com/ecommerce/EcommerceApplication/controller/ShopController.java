@@ -1,0 +1,60 @@
+package com.ecommerce.EcommerceApplication.controller;
+
+import com.ecommerce.EcommerceApplication.dto.ShopCreateRequest;
+import com.ecommerce.EcommerceApplication.dto.ShopResponse;
+import com.ecommerce.EcommerceApplication.dto.ShopUpdateRequest;
+import com.ecommerce.EcommerceApplication.service.ShopService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequiredArgsConstructor
+public class ShopController {
+
+    private final ShopService shopService;
+
+    @GetMapping("/shops")
+    public ResponseEntity<List<ShopResponse>> listActive() {
+        return ResponseEntity.ok(shopService.listActive());
+    }
+
+    @GetMapping("/shops/{id}")
+    public ResponseEntity<ShopResponse> get(@PathVariable Long id) {
+        return ResponseEntity.ok(shopService.get(id));
+    }
+
+    @PreAuthorize("hasRole('SELLER')")
+    @PostMapping("/seller/shops")
+    public ResponseEntity<ShopResponse> create(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody ShopCreateRequest req) {
+        return ResponseEntity.ok(shopService.create(userId, req));
+    }
+
+    @PreAuthorize("hasAnyRole('SELLER','ADMIN')")
+    @PutMapping("/seller/shops/{id}")
+    public ResponseEntity<ShopResponse> update(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long id,
+            @RequestBody ShopUpdateRequest req) {
+        boolean isAdmin = false;
+        return ResponseEntity.ok(shopService.update(userId, id, req, isAdmin));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/admin/shops/{id}/suspend")
+    public ResponseEntity<ShopResponse> suspend(
+            @AuthenticationPrincipal Long adminId,
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body) {
+        String reason = body != null ? body.getOrDefault("reason", "") : "";
+        return ResponseEntity.ok(shopService.suspendByAdmin(adminId, id, reason));
+    }
+}
