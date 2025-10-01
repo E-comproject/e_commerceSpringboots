@@ -1,7 +1,6 @@
 package com.ecommerce.EcommerceApplication.config;
 
 import com.ecommerce.EcommerceApplication.security.JwtAuthenticationFilter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -13,21 +12,18 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.cors.CorsConfiguration;
-
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.List;
-
 @Configuration
-@RequiredArgsConstructor
 @EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -57,11 +53,22 @@ public class SecurityConfig {
 
                 // public GET ตัวอย่าง
                 .requestMatchers(HttpMethod.GET, "/shops/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/products/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/categories/**").permitAll()
+
+                // payment webhook (ไม่ต้อง auth - สำหรับ payment gateway callback)
+                .requestMatchers("/payments/webhook").permitAll()
+                .requestMatchers("/payments/omise/webhook").permitAll()
+                .requestMatchers("/payments/omise/public-key").permitAll()
+                .requestMatchers("/payments/omise/payment-methods").permitAll()
+
+                // file uploads - GET เพื่อดูรูป public, POST ต้อง auth
+                .requestMatchers(HttpMethod.GET, "/files/chat/**").permitAll()
 
                 // ตัวอย่าง role-based
                 .requestMatchers("/admin/**").hasRole("ADMIN")
-                .requestMatchers("/seller/**").hasRole("SELLER")
                 .requestMatchers(HttpMethod.POST, "/seller/apply").authenticated()
+                .requestMatchers("/seller/**").hasRole("SELLER")
 
                 // ที่เหลือต้อง auth
                 .anyRequest().authenticated()
@@ -77,25 +84,6 @@ public class SecurityConfig {
     @Bean
     AuthenticationManager authenticationManager(AuthenticationConfiguration cfg) throws Exception {
         return cfg.getAuthenticationManager();
-    }
-
-    // CORS ตามที่คุณกำหนดไว้เดิม
-    @Bean
-    CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration c = new CorsConfiguration();
-        c.setAllowedOrigins(List.of(
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "http://localhost:4200",
-            "http://localhost:8081"
-        ));
-        c.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
-        c.setAllowedHeaders(List.of("Authorization","Content-Type","X-Requested-With"));
-        c.setAllowCredentials(true);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", c);
-        return source;
     }
 
     @Bean

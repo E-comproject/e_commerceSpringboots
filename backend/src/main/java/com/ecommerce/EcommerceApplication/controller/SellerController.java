@@ -3,6 +3,7 @@ package com.ecommerce.EcommerceApplication.controller;
 import com.ecommerce.EcommerceApplication.dto.SellerApplicationResponse;
 import com.ecommerce.EcommerceApplication.dto.SellerApplyRequest;
 import com.ecommerce.EcommerceApplication.service.SellerService;
+import com.ecommerce.EcommerceApplication.util.AuthUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,11 +18,12 @@ import org.springframework.web.bind.annotation.*;
 public class SellerController {
 
     private final SellerService sellerService;
+    private final AuthUtils authUtils;
 
     @PostMapping("/seller/apply")
-    @PreAuthorize("hasAnyRole('USER','BUYER') or isAuthenticated()") 
-    public ResponseEntity<?> apply(@AuthenticationPrincipal Long userId,
+    public ResponseEntity<?> apply(@AuthenticationPrincipal String username,
                                    @Valid @RequestBody SellerApplyRequest req) {
+        Long userId = authUtils.getUserIdFromUsername(username);
         SellerApplicationResponse res = sellerService.apply(userId, req);
         return ResponseEntity.ok(res);
     }

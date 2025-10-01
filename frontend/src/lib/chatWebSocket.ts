@@ -22,12 +22,17 @@ export class ChatWebSocketService {
   private connect() {
     console.log('Attempting to connect to WebSocket...');
 
+    // ดึง JWT token จาก localStorage
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
     this.client = new Client({
       webSocketFactory: () => {
         console.log('Creating SockJS connection to http://localhost:8080/api/ws-chat');
         return new SockJS('http://localhost:8080/api/ws-chat');
       },
-      connectHeaders: {},
+      connectHeaders: token ? {
+        Authorization: `Bearer ${token}`,
+      } : {},
       debug: (str) => {
         console.log('STOMP: ' + str);
       },

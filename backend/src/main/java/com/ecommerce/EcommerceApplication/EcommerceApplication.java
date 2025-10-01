@@ -1,8 +1,11 @@
 package com.ecommerce.EcommerceApplication;
 
+import com.ecommerce.EcommerceApplication.security.JwtChannelInterceptor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
@@ -18,6 +21,9 @@ public class EcommerceApplication {
     @Configuration
     @EnableWebSocketMessageBroker
     static class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+        @Autowired
+        private JwtChannelInterceptor jwtChannelInterceptor;
 
         public WebSocketConfig() {
             System.out.println("🏗️ WebSocketConfig inner class created!");
@@ -41,6 +47,12 @@ public class EcommerceApplication {
 
             System.out.println("✅ STOMP endpoint registered: /ws-chat");
             System.out.println("📍 SockJS info endpoint: http://localhost:8080/ws-chat/info");
+        }
+
+        @Override
+        public void configureClientInboundChannel(ChannelRegistration registration) {
+            registration.interceptors(jwtChannelInterceptor);
+            System.out.println("✅ JWT Channel Interceptor registered");
         }
     }
 }

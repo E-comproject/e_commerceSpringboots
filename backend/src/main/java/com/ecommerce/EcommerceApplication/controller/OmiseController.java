@@ -6,6 +6,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.ecommerce.EcommerceApplication.config.OmiseConfig;
@@ -261,8 +262,9 @@ public class OmiseController {
     }
 
     /**
-     * Refund a charge
+     * Refund a charge (ADMIN only)
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/charges/{chargeId}/refund")
     public ResponseEntity<?> refundCharge(
             @PathVariable String chargeId,

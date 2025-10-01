@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +23,7 @@ import com.ecommerce.EcommerceApplication.dto.CartItemDto;
 import com.ecommerce.EcommerceApplication.entity.Cart;
 import com.ecommerce.EcommerceApplication.entity.CartItem;
 import com.ecommerce.EcommerceApplication.service.CartService;
+import com.ecommerce.EcommerceApplication.util.AuthUtils;
 
 @RestController
 @RequestMapping("/cart")
@@ -29,47 +31,57 @@ import com.ecommerce.EcommerceApplication.service.CartService;
 public class CartController {
 
     private final CartService cartService;
+    private final AuthUtils authUtils;
 
-    public CartController(CartService cartService) {
+    public CartController(CartService cartService, AuthUtils authUtils) {
         this.cartService = cartService;
+        this.authUtils = authUtils;
     }
 
-    // สมมติรับ userId จากพารามิเตอร์ (โปรดักชันควรดึงจาก auth)
+    private Long getUserId(Authentication auth) {
+        return authUtils.getUserIdFromUsername(auth.getName());
+    }
+
+    // ดึง userId จาก JWT Authentication
     @GetMapping
-    public ResponseEntity<CartDto> getOrCreate(@RequestParam Long userId) {
+    public ResponseEntity<CartDto> getOrCreate(Authentication auth) {
+        Long userId = getUserId(auth);
         Cart cart = cartService.getOrCreateCart(userId);
         return ResponseEntity.ok(toDto(cart, cartService.listItems(cart.getId())));
     }
 
-    // ดึงรายการในตะกร้า (ส่งรวมเป็น CartDto เช่นกัน)
-   @GetMapping("/items")
-    public ResponseEntity<CartDto> listItems(@RequestParam Long cartId) {
-    Cart cart = cartService.getCart(cartId);                 // <-- โหลดจริง
-    List<CartItem> items = cartService.listItems(cartId);
-    return ResponseEntity.ok(toDto(cart, items));
-}
+    // ดึงรายการในตะกร้า (ใช้ userId จาก JWT)
+    @GetMapping("/items")
+    public ResponseEntity<CartDto> listItems(Authentication auth) {
+        Long userId = getUserId(auth);
+        Cart cart = cartService.getOrCreateCart(userId);
+        List<CartItem> items = cartService.listItems(cart.getId());
+        return ResponseEntity.ok(toDto(cart, items));
+    }
 
     // เพิ่มสินค้าเข้าตะกร้า (รองรับทั้ง product และ variant)
     @PostMapping("/items")
-    public ResponseEntity<CartDto> addItem(@RequestParam Long cartId,
+    public ResponseEntity<CartDto> addItem(Authentication auth,
                                          @RequestBody AddToCartReq request) {
         try {
             if (!request.isValid()) {
                 return ResponseEntity.badRequest().build();
             }
 
+            Long userId = getUserId(auth);
+            Cart cart = cartService.getOrCreateCart(userId);
+
             CartItem addedItem;
             if (request.hasVariant()) {
                 // Add product variant to cart
-                addedItem = cartService.addItemWithVariant(cartId, request.getProductId(),
+                addedItem = cartService.addItemWithVariant(cart.getId(), request.getProductId(),
                                                          request.getVariantId(), request.getQuantity());
             } else {
                 // Add regular product to cart
-                addedItem = cartService.addItem(cartId, request.getProductId(), request.getQuantity());
+                addedItem = cartService.addItem(cart.getId(), request.getProductId(), request.getQuantity());
             }
 
-            Cart cart = cartService.getCart(cartId);
-            List<CartItem> items = cartService.listItems(cartId);
+            List<CartItem> items = cartService.listItems(cart.getId());
             return ResponseEntity.status(HttpStatus.CREATED).body(toDto(cart, items));
 
         } catch (IllegalArgumentException e) {
@@ -81,13 +93,15 @@ public class CartController {
 
     // เพิ่มสินค้าแบบเดิม (backward compatibility)
     @PostMapping("/items/simple")
-    public ResponseEntity<CartDto> addItemSimple(@RequestParam Long cartId,
+    public ResponseEntity<CartDto> addItemSimple(Authentication auth,
                                                @RequestParam Long productId,
                                                @RequestParam int quantity) {
         try {
-            cartService.addItem(cartId, productId, quantity);
-            Cart cart = cartService.getCart(cartId);
-            List<CartItem> items = cartService.listItems(cartId);
+            Long userId = getUserId(auth);
+            Cart cart = cartService.getOrCreateCart(userId);
+
+            cartService.addItem(cart.getId(), productId, quantity);
+            List<CartItem> items = cartService.listItems(cart.getId());
             return ResponseEntity.status(HttpStatus.CREATED).body(toDto(cart, items));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
@@ -98,28 +112,37 @@ public class CartController {
 
     // เปลี่ยนจำนวน (ถ้า <= 0 จะลบ และส่ง 204)
     @PutMapping("/items/{itemId}")
-    public ResponseEntity<?> updateItem(@PathVariable Long itemId,
-                                    @RequestParam int quantity,
-                                    @RequestParam Long cartId) {
-    var updated = cartService.updateItem(itemId, quantity);
-    if (updated == null) return ResponseEntity.noContent().build();
-    Cart cart = cartService.getCart(cartId);                 // <-- โหลดจริง
-    List<CartItem> items = cartService.listItems(cartId);
-    return ResponseEntity.ok(toDto(cart, items));
-}
+    public ResponseEntity<?> updateItem(Authentication auth,
+                                    @PathVariable Long itemId,
+                                    @RequestParam int quantity) {
+        Long userId = getUserId(auth);
+        Cart cart = cartService.getOrCreateCart(userId);
 
-    // ลบ item โดยยึด cartId + itemId (กันลบของคนอื่น)
-    @DeleteMapping("/{cartId}/items/{itemId}")
-    public ResponseEntity<Void> removeItem(@PathVariable Long cartId, @PathVariable Long itemId) {
-        return cartService.removeItem(cartId, itemId)
+        var updated = cartService.updateItem(itemId, quantity);
+        if (updated == null) return ResponseEntity.noContent().build();
+
+        List<CartItem> items = cartService.listItems(cart.getId());
+        return ResponseEntity.ok(toDto(cart, items));
+    }
+
+    // ลบ item (ตรวจสอบว่าเป็นของ user คนนี้)
+    @DeleteMapping("/items/{itemId}")
+    public ResponseEntity<Void> removeItem(Authentication auth, @PathVariable Long itemId) {
+        Long userId = getUserId(auth);
+        Cart cart = cartService.getOrCreateCart(userId);
+
+        return cartService.removeItem(cart.getId(), itemId)
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.notFound().build();
     }
 
     // ล้างทั้งตะกร้า
     @DeleteMapping("/items")
-    public ResponseEntity<Void> clear(@RequestParam Long cartId) {
-        return cartService.clearCart(cartId)
+    public ResponseEntity<Void> clear(Authentication auth) {
+        Long userId = getUserId(auth);
+        Cart cart = cartService.getOrCreateCart(userId);
+
+        return cartService.clearCart(cart.getId())
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.badRequest().build();
     }

@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ecommerce.EcommerceApplication.dto.WishlistDto;
 import com.ecommerce.EcommerceApplication.service.WishlistService;
+import com.ecommerce.EcommerceApplication.util.AuthUtils;
 
 import java.util.Map;
 
@@ -24,15 +26,22 @@ import java.util.Map;
 public class WishlistController {
 
     private final WishlistService wishlistService;
+    private final AuthUtils authUtils;
 
-    public WishlistController(WishlistService wishlistService) {
+    public WishlistController(WishlistService wishlistService, AuthUtils authUtils) {
         this.wishlistService = wishlistService;
+        this.authUtils = authUtils;
     }
 
-    // เพิ่มสินค้าเข้า wishlist
+    private Long getUserId(Authentication auth) {
+        return authUtils.getUserIdFromUsername(auth.getName());
+    }
+
+    // เพิ่มสินค้าเข้า wishlist (ใช้ userId จาก JWT)
     @PostMapping("/add")
-    public ResponseEntity<?> addToWishlist(@RequestParam Long userId, @RequestParam Long productId) {
+    public ResponseEntity<?> addToWishlist(Authentication auth, @RequestParam Long productId) {
         try {
+            Long userId = getUserId(auth);
             WishlistDto wishlist = wishlistService.addToWishlist(userId, productId);
             return ResponseEntity.status(HttpStatus.CREATED).body(wishlist);
         } catch (IllegalArgumentException e) {
@@ -43,9 +52,10 @@ public class WishlistController {
         }
     }
 
-    // ลบสินค้าออกจาก wishlist
+    // ลบสินค้าออกจาก wishlist (ใช้ userId จาก JWT)
     @DeleteMapping("/remove")
-    public ResponseEntity<?> removeFromWishlist(@RequestParam Long userId, @RequestParam Long productId) {
+    public ResponseEntity<?> removeFromWishlist(Authentication auth, @RequestParam Long productId) {
+        Long userId = getUserId(auth);
         boolean removed = wishlistService.removeFromWishlist(userId, productId);
         if (removed) {
             return ResponseEntity.noContent().build();
@@ -54,24 +64,27 @@ public class WishlistController {
         }
     }
 
-    // ดู wishlist ของ user
+    // ดู wishlist ของ user (ใช้ userId จาก JWT)
     @GetMapping
-    public Page<WishlistDto> getUserWishlist(@RequestParam Long userId,
+    public Page<WishlistDto> getUserWishlist(Authentication auth,
                                              @RequestParam(defaultValue = "0") int page,
                                              @RequestParam(defaultValue = "20") int size) {
+        Long userId = getUserId(auth);
         return wishlistService.getUserWishlist(userId, PageRequest.of(page, size));
     }
 
-    // ตรวจสอบว่าสินค้าอยู่ใน wishlist หรือไม่
+    // ตรวจสอบว่าสินค้าอยู่ใน wishlist หรือไม่ (ใช้ userId จาก JWT)
     @GetMapping("/check")
-    public ResponseEntity<Map<String, Boolean>> checkInWishlist(@RequestParam Long userId, @RequestParam Long productId) {
+    public ResponseEntity<Map<String, Boolean>> checkInWishlist(Authentication auth, @RequestParam Long productId) {
+        Long userId = getUserId(auth);
         boolean isInWishlist = wishlistService.isInWishlist(userId, productId);
         return ResponseEntity.ok(Map.of("isInWishlist", isInWishlist));
     }
 
-    // นับจำนวน items ใน wishlist
+    // นับจำนวน items ใน wishlist (ใช้ userId จาก JWT)
     @GetMapping("/count")
-    public ResponseEntity<Map<String, Long>> getWishlistCount(@RequestParam Long userId) {
+    public ResponseEntity<Map<String, Long>> getWishlistCount(Authentication auth) {
+        Long userId = getUserId(auth);
         long count = wishlistService.getWishlistCount(userId);
         return ResponseEntity.ok(Map.of("count", count));
     }
@@ -83,10 +96,12 @@ public class WishlistController {
         return wishlistService.getMostWishlistedProducts(PageRequest.of(page, size));
     }
 
-    // Toggle wishlist (เพิ่ม/ลบ ในการกดเดียว)
+    // Toggle wishlist (เพิ่ม/ลบ ในการกดเดียว - ใช้ userId จาก JWT)
     @PostMapping("/toggle")
-    public ResponseEntity<?> toggleWishlist(@RequestParam Long userId, @RequestParam Long productId) {
+    public ResponseEntity<?> toggleWishlist(Authentication auth, @RequestParam Long productId) {
         try {
+            Long userId = getUserId(auth);
+
             if (wishlistService.isInWishlist(userId, productId)) {
                 // ลบออกจาก wishlist
                 wishlistService.removeFromWishlist(userId, productId);

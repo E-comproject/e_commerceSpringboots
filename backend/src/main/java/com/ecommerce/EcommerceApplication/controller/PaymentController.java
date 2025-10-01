@@ -6,6 +6,8 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import com.ecommerce.EcommerceApplication.dto.CreatePaymentReq;
@@ -95,8 +97,23 @@ public class PaymentController {
     }
 
     /**
-     * Get payments for a user
+     * Get payments for current user (ใช้ userId จาก JWT)
      */
+    @GetMapping("/my-payments")
+    public ResponseEntity<Page<PaymentDto>> getMyPayments(
+            Authentication auth,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Long userId = Long.parseLong(auth.getName());
+        Page<PaymentDto> payments = paymentService.getPaymentsByUserId(userId, PageRequest.of(page, size));
+        return ResponseEntity.ok(payments);
+    }
+
+    /**
+     * Get payments for a user (ADMIN only)
+     */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/user/{userId}")
     public ResponseEntity<Page<PaymentDto>> getPaymentsByUser(
             @PathVariable Long userId,
@@ -108,8 +125,9 @@ public class PaymentController {
     }
 
     /**
-     * Get payments by status
+     * Get payments by status (ADMIN only)
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/status/{status}")
     public ResponseEntity<Page<PaymentDto>> getPaymentsByStatus(
             @PathVariable PaymentStatus status,
@@ -121,8 +139,9 @@ public class PaymentController {
     }
 
     /**
-     * Update payment status (admin function)
+     * Update payment status (ADMIN only)
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{paymentId}/status")
     public ResponseEntity<?> updatePaymentStatus(
             @PathVariable Long paymentId,
@@ -139,8 +158,9 @@ public class PaymentController {
     }
 
     /**
-     * Complete payment manually
+     * Complete payment manually (ADMIN only)
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{paymentId}/complete")
     public ResponseEntity<?> completePayment(
             @PathVariable Long paymentId,
@@ -156,8 +176,9 @@ public class PaymentController {
     }
 
     /**
-     * Fail payment manually
+     * Fail payment manually (ADMIN only)
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{paymentId}/fail")
     public ResponseEntity<?> failPayment(
             @PathVariable Long paymentId,
@@ -171,8 +192,9 @@ public class PaymentController {
     }
 
     /**
-     * Refund payment
+     * Refund payment (ADMIN only)
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{paymentId}/refund")
     public ResponseEntity<?> refundPayment(
             @PathVariable Long paymentId,
@@ -189,7 +211,7 @@ public class PaymentController {
     }
 
     /**
-     * Cancel payment
+     * Cancel payment (User can cancel their own payment)
      */
     @PostMapping("/{paymentId}/cancel")
     public ResponseEntity<?> cancelPayment(
@@ -233,8 +255,9 @@ public class PaymentController {
     }
 
     /**
-     * Get payment statistics (admin)
+     * Get payment statistics (ADMIN only)
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/statistics")
     public ResponseEntity<PaymentService.PaymentStats> getPaymentStatistics() {
         PaymentService.PaymentStats stats = paymentService.getPaymentStatistics();
@@ -242,7 +265,7 @@ public class PaymentController {
     }
 
     /**
-     * Webhook endpoint for payment gateway callbacks
+     * Webhook endpoint for payment gateway callbacks (Public - no auth required)
      */
     @PostMapping("/webhook")
     public ResponseEntity<?> handlePaymentWebhook(@RequestBody PaymentWebhookReq webhookData) {
@@ -257,8 +280,9 @@ public class PaymentController {
     }
 
     /**
-     * Manual cleanup of expired payments (admin)
+     * Manual cleanup of expired payments (ADMIN only)
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/cleanup-expired")
     public ResponseEntity<String> cleanupExpiredPayments() {
         paymentService.cleanupExpiredPayments();

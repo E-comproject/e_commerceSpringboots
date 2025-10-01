@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,82 +38,66 @@ public class ProductController {
     }
 
     @GetMapping
-    public List<ProductDto> getAllProducts() {
-        return productRepository.findAll()
-                .stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+    public ResponseEntity<?> getAllProducts() {
+        try {
+            List<ProductDto> products = productService.getAllProducts();
+            return ResponseEntity.ok(products);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        }
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProductDto> getProductById(@PathVariable Long id) {
-        return productRepository.findById(id)
-                .map(p -> ResponseEntity.ok(this.toDto(p)))
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> getProductById(@PathVariable Long id) {
+        try {
+            ProductDto product = productService.getById(id);
+            return ResponseEntity.ok(product);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        }
     }
 
     @GetMapping("/search")
-    public Page<ProductDto> searchProducts(
+    public ResponseEntity<?> searchProducts(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return productService.search(q, categoryId, status, org.springframework.data.domain.PageRequest.of(page, size));
+        try {
+            Page<ProductDto> result = productService.search(q, categoryId, status, org.springframework.data.domain.PageRequest.of(page, size));
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        }
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('SELLER', 'ADMIN')")
     public ResponseEntity<ProductDto> createProduct(@RequestBody Product product) {
         Product saved = productRepository.save(product);
         return ResponseEntity
                 .created(URI.create("/products/" + saved.getId()))
-                .body(this.toDto(saved));
+                .body(productService.toDto(saved));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SELLER', 'ADMIN')")
     public ResponseEntity<ProductDto> updateProduct(@PathVariable Long id, @RequestBody Product product) {
         return productService.updateProduct(id, product)
-                .map(updated -> ResponseEntity.ok(this.toDto(updated)))
+                .map(updated -> ResponseEntity.ok(productService.toDto(updated)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SELLER', 'ADMIN')")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
         return productService.deleteProduct(id)
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.notFound().build();
     }
 
-    // -------- Mapping helpers (Entity -> DTO) --------
-    private ProductDto toDto(Product p) {
-        ProductDto dto = new ProductDto();
-        dto.id = p.getId();
-        dto.shopId = p.getShopId();
-        dto.categoryId = p.getCategoryId();
-        dto.name = p.getName();
-        dto.slug = p.getSlug();
-        dto.description = p.getDescription();
-        dto.price = p.getPrice();
-        dto.comparePrice = p.getComparePrice();
-        dto.sku = p.getSku();
-        dto.stockQuantity = p.getStockQuantity();
-        dto.weightGram = p.getWeightGram();
-        dto.status = p.getStatus();
-        dto.ratingAvg = p.getRatingAvg();
-        dto.ratingCount = p.getRatingCount();
-        dto.createdAt = p.getCreatedAt();
-
-        if (p.getImages() != null) {
-            dto.images = p.getImages().stream().map(img -> {
-                ProductImageDto idto = new ProductImageDto();
-                idto.id = img.getId();
-                idto.url = img.getUrl();
-                idto.sortOrder = img.getSortOrder();
-                idto.altText = img.getAltText();
-                return idto;
-            }).collect(Collectors.toList());
-        }
-        return dto;
-    }
 }

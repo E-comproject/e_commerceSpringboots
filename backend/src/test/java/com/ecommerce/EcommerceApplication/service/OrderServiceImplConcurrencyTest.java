@@ -24,12 +24,14 @@ import com.ecommerce.EcommerceApplication.dto.OrderDto;
 import com.ecommerce.EcommerceApplication.entity.Cart;
 import com.ecommerce.EcommerceApplication.entity.CartItem;
 import com.ecommerce.EcommerceApplication.entity.Product;
-import com.ecommerce.EcommerceApplication.entity.Shop;
+import com.ecommerce.EcommerceApplication.model.Shop;
+import com.ecommerce.EcommerceApplication.model.User;
 import com.ecommerce.EcommerceApplication.repository.CartItemRepository;
 import com.ecommerce.EcommerceApplication.repository.CartRepository;
 import com.ecommerce.EcommerceApplication.repository.OrderRepository;
 import com.ecommerce.EcommerceApplication.repository.ProductRepository;
 import com.ecommerce.EcommerceApplication.repository.ShopRepository;
+import com.ecommerce.EcommerceApplication.repository.UserRepository;
 import com.ecommerce.EcommerceApplication.service.impl.OrderServiceImpl;
 
 @SpringBootTest
@@ -57,6 +59,9 @@ class OrderServiceImplConcurrencyTest {
     @Autowired
     private ShopRepository shopRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @AfterEach
     void tearDown() {
         cartItemRepository.deleteAll();
@@ -64,16 +69,26 @@ class OrderServiceImplConcurrencyTest {
         cartRepository.deleteAll();
         productRepository.deleteAll();
         shopRepository.deleteAll();
+        userRepository.deleteAll();
         Mockito.reset(orderServiceImpl);
     }
 
     @Test
     void concurrentCheckoutPreventsOversell() throws Exception {
+        // Create a test user first
+        User seller = new User();
+        seller.setUsername("testseller");
+        seller.setEmail("seller@test.com");
+        seller.setPassword("password123");
+        seller.setRole("ROLE_SELLER");
+        seller = userRepository.save(seller);
+
+        // Create shop with the owner relationship
         Shop shop = new Shop();
+        shop.setOwner(seller);
         shop.setName("Test Shop");
-        shop.setSlug("test-shop");
-        shop.setSellerUserId(500L);
-        shopRepository.save(shop);
+        shop.setDescription("Test Description");
+        shop = shopRepository.save(shop);
 
         Product product = new Product();
         product.setName("Test Product");

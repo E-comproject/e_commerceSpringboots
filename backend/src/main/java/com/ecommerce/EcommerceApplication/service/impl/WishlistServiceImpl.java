@@ -108,8 +108,8 @@ public class WishlistServiceImpl implements WishlistService {
         dto.ratingAvg = product.getRatingAvg();
         dto.ratingCount = product.getRatingCount();
         dto.createdAt = product.getCreatedAt();
-        dto.shopId = product.getShop().getId();
-        dto.categoryId = product.getCategory().getId();
+        dto.shopId = product.getShopId();
+        dto.categoryId = product.getCategoryId();
 
         // TODO: แปลง images และ variants ถ้าจำเป็น
 

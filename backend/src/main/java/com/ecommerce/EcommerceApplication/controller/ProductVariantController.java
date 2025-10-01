@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -82,9 +83,10 @@ public class ProductVariantController {
     }
 
     /**
-     * Create new variant for a product
+     * Create new variant for a product (SELLER/ADMIN only)
      * POST /api/products/{productId}/variants
      */
+    @PreAuthorize("hasAnyRole('SELLER', 'ADMIN')")
     @PostMapping("/{productId}/variants")
     public ResponseEntity<ProductVariantDto> createVariant(
             @PathVariable Long productId,
@@ -101,9 +103,10 @@ public class ProductVariantController {
     }
 
     /**
-     * Update existing variant
+     * Update existing variant (SELLER/ADMIN only)
      * PUT /api/products/variants/{variantId}
      */
+    @PreAuthorize("hasAnyRole('SELLER', 'ADMIN')")
     @PutMapping("/variants/{variantId}")
     public ResponseEntity<ProductVariantDto> updateVariant(
             @PathVariable Long variantId,
@@ -120,9 +123,10 @@ public class ProductVariantController {
     }
 
     /**
-     * Delete variant
+     * Delete variant (SELLER/ADMIN only)
      * DELETE /api/products/variants/{variantId}
      */
+    @PreAuthorize("hasAnyRole('SELLER', 'ADMIN')")
     @DeleteMapping("/variants/{variantId}")
     public ResponseEntity<Void> deleteVariant(@PathVariable Long variantId) {
         try {
@@ -169,10 +173,11 @@ public class ProductVariantController {
     }
 
     /**
-     * Update variant stock
+     * Update variant stock (SELLER/ADMIN only)
      * PUT /api/products/variants/{variantId}/stock
      * Body: {"stockQuantity": 100}
      */
+    @PreAuthorize("hasAnyRole('SELLER', 'ADMIN')")
     @PutMapping("/variants/{variantId}/stock")
     public ResponseEntity<Void> updateVariantStock(
             @PathVariable Long variantId,
@@ -218,9 +223,10 @@ public class ProductVariantController {
     }
 
     /**
-     * Get low stock variants across all products
+     * Get low stock variants across all products (SELLER/ADMIN only)
      * GET /api/products/variants/low-stock?threshold=10
      */
+    @PreAuthorize("hasAnyRole('SELLER', 'ADMIN')")
     @GetMapping("/variants/low-stock")
     public ResponseEntity<List<ProductVariantDto>> getLowStockVariants(
             @RequestParam(value = "threshold", defaultValue = "10") Integer threshold) {
@@ -234,10 +240,11 @@ public class ProductVariantController {
     }
 
     /**
-     * Bulk update variant status for a product
+     * Bulk update variant status for a product (SELLER/ADMIN only)
      * PUT /api/products/{productId}/variants/status
      * Body: {"status": "inactive"}
      */
+    @PreAuthorize("hasAnyRole('SELLER', 'ADMIN')")
     @PutMapping("/{productId}/variants/status")
     public ResponseEntity<Void> updateVariantStatusByProduct(
             @PathVariable Long productId,

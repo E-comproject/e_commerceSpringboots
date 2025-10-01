@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +20,7 @@ import com.ecommerce.EcommerceApplication.dto.ReviewCreateReq;
 import com.ecommerce.EcommerceApplication.dto.ReviewDto;
 import com.ecommerce.EcommerceApplication.exception.ReviewAlreadyExistsException;
 import com.ecommerce.EcommerceApplication.service.ReviewService;
+import com.ecommerce.EcommerceApplication.util.AuthUtils;
 
 @RestController
 @RequestMapping("/reviews")
@@ -26,12 +28,22 @@ import com.ecommerce.EcommerceApplication.service.ReviewService;
 public class ReviewController {
 
     private final ReviewService service;
-    public ReviewController(ReviewService service) { this.service = service; }
+    private final AuthUtils authUtils;
 
-    // สร้างรีวิว (dev: รับ userId ผ่าน query param; prod ควรดึงจาก token)
+    public ReviewController(ReviewService service, AuthUtils authUtils) {
+        this.service = service;
+        this.authUtils = authUtils;
+    }
+
+    private Long getUserId(Authentication auth) {
+        return authUtils.getUserIdFromUsername(auth.getName());
+    }
+
+    // สร้างรีวิว (ใช้ userId จาก JWT)
     @PostMapping
-    public ResponseEntity<?> create(@RequestParam Long userId, @RequestBody ReviewCreateReq req) {
+    public ResponseEntity<?> create(Authentication auth, @RequestBody ReviewCreateReq req) {
         try {
+            Long userId = getUserId(auth);
             ReviewDto review = service.create(userId, req);
             return ResponseEntity.status(HttpStatus.CREATED).body(review); // 201 Created
         } catch (ReviewAlreadyExistsException e) {

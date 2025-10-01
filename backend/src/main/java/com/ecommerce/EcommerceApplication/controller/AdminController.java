@@ -4,11 +4,13 @@ import com.ecommerce.EcommerceApplication.repository.SellerApplicationRepository
 import com.ecommerce.EcommerceApplication.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')") // ทุก endpoint ใน controller นี้ต้องเป็น ADMIN
 public class AdminController {
 
     private final SellerApplicationRepository sellerAppRepo;

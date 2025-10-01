@@ -14,4 +14,7 @@ public interface ProductService {
 
     Page<ProductDto> search(String q, Long categoryId, String status, Pageable pageable);
     ProductDto getBySlug(String slug);
+    ProductDto getById(Long id);
+    java.util.List<ProductDto> getAllProducts();
+    ProductDto toDto(com.ecommerce.EcommerceApplication.entity.Product p);
 }

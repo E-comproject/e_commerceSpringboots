@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
+@RequestMapping("/me")
 @RequiredArgsConstructor
 public class MeController {
 
@@ -24,13 +25,14 @@ public class MeController {
         return userRepository.findByUsername(username).orElseThrow();
     }
 
-    @GetMapping("/me")
+    @GetMapping
     public ResponseEntity<UserProfileResponse> me(@AuthenticationPrincipal String username) {
+        System.out.println("DEBUG: username from @AuthenticationPrincipal = " + username);
         User u = meOrThrow(username);
         return ResponseEntity.ok(new UserProfileResponse(u.getId(), u.getUsername(), u.getEmail(), u.getRole()));
     }
 
-    @PutMapping("/me")
+    @PutMapping
     public ResponseEntity<?> updateMe(@AuthenticationPrincipal String username,
                                       @RequestBody UpdateMeRequest req) {
         User u = meOrThrow(username);
@@ -55,7 +57,7 @@ public class MeController {
         return ResponseEntity.ok(Map.of("message", "updated"));
     }
 
-    @PutMapping("/me/password")
+    @PutMapping("/password")
     public ResponseEntity<?> changePassword(@AuthenticationPrincipal String username,
                                             @RequestBody ChangePasswordRequest req) {
         User u = meOrThrow(username);

@@ -23,12 +23,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE p.id = :id")
     Optional<Product> findByIdForUpdate(@Param("id") Long id);
 
-    @Query("""
-       SELECT p FROM Product p
-       WHERE (:q IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :q, '%')))
-         AND (:categoryId IS NULL OR p.categoryId = :categoryId)
-         AND (:status IS NULL OR p.status = :status)
-    """)
+    @Query(value = "SELECT * FROM products p WHERE " +
+           "(:q IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', CAST(:q AS TEXT), '%'))) AND " +
+           "(:categoryId IS NULL OR p.category_id = :categoryId) AND " +
+           "(:status IS NULL OR p.status = CAST(:status AS TEXT))",
+           nativeQuery = true)
     Page<Product> search(
         @Param("q") String q,
         @Param("categoryId") Long categoryId,

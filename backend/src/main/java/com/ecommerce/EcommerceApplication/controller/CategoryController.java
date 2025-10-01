@@ -2,6 +2,7 @@ package com.ecommerce.EcommerceApplication.controller;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,26 +28,34 @@ public class CategoryController {
         this.service = service;
     }
 
+    // สร้าง category (ADMIN only)
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public CategoryDto create(@RequestBody CategoryDto req) {
         return service.create(req);
     }
 
+    // ดู category (Public)
     @GetMapping("/{id}")
     public CategoryDto get(@PathVariable Long id) {
         return service.get(id);
     }
 
+    // แก้ไข category (ADMIN only)
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public CategoryDto update(@PathVariable Long id, @RequestBody CategoryDto req) {
         return service.update(id, req);
     }
 
+    // ลบ category (ADMIN only)
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
         service.delete(id);
     }
 
+    // ค้นหา categories (Public)
     @GetMapping
     public Page<CategoryDto> search(
             @RequestParam(required = false) String q,

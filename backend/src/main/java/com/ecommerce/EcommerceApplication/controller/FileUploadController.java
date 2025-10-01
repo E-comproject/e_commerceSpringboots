@@ -22,6 +22,7 @@ public class FileUploadController {
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     private static final String[] ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"};
 
+    // Upload chat image (ต้อง authenticated - เพราะเป็นส่วนของ chat)
     @PostMapping("/upload/chat")
     public ResponseEntity<?> uploadChatImage(@RequestParam("file") MultipartFile file) {
         try {

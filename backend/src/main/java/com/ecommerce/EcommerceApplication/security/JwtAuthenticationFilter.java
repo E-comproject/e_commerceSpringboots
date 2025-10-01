@@ -50,7 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             if (tokenProvider.validateToken(token)) {
-                Long userId = tokenProvider.getUserId(token);
+                String username = tokenProvider.getUsername(token);
                 List<String> roles = tokenProvider.getRoles(token);
 
                 var authorities = roles.stream()
@@ -58,12 +58,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .map(SimpleGrantedAuthority::new)
                         .toList();
 
+                System.out.println("DEBUG JWT: username=" + username + ", roles=" + roles + ", authorities=" + authorities);
+
                 var authentication =
-                        new UsernamePasswordAuthenticationToken(userId, null, authorities);
+                        new UsernamePasswordAuthenticationToken(username, null, authorities);
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            System.err.println("DEBUG JWT ERROR: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);

@@ -7,7 +7,6 @@ import com.ecommerce.EcommerceApplication.model.Shop;
 import com.ecommerce.EcommerceApplication.model.User;
 import com.ecommerce.EcommerceApplication.repository.ShopRepository;
 import com.ecommerce.EcommerceApplication.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,11 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class ShopService {
 
     private final ShopRepository shopRepo;
     private final UserRepository userRepo;
+
+    public ShopService(ShopRepository shopRepo, UserRepository userRepo) {
+        this.shopRepo = shopRepo;
+        this.userRepo = userRepo;
+    }
 
     private ShopResponse toDto(Shop s) {
         return ShopResponse.builder()
@@ -30,6 +33,15 @@ public class ShopService {
                 .logoUrl(s.getLogoUrl())
                 .status(s.getStatus())
                 .build();
+    }
+
+    private String generateSlug(String name) {
+        String slug = name.toLowerCase()
+                .replaceAll("[^a-z0-9\\s-]", "")
+                .replaceAll("\\s+", "-")
+                .replaceAll("-+", "-")
+                .replaceAll("^-|-$", "");
+        return slug.isEmpty() ? "shop-" + System.currentTimeMillis() : slug;
     }
 
     @Transactional
@@ -43,11 +55,13 @@ public class ShopService {
 
         Shop s = new Shop();
         s.setOwner(owner);
+        s.setSellerUserId(sellerId);
         s.setName(req.getName());
+        s.setSlug(generateSlug(req.getName()));
         s.setDescription(req.getDescription());
         s.setLogoUrl(req.getLogoUrl());
         if (s.getStatus() == null) {
-            s.setStatus("ACTIVE"); 
+            s.setStatus("ACTIVE");
         }
         s = shopRepo.save(s);
         return toDto(s);

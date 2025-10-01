@@ -121,7 +121,34 @@ public class ProductServiceImpl implements ProductService {
                 (status == null || status.isBlank()) ? null : status.trim(),
                 pageable
         );
-        return page.map(this::toDto);
+        return page.map(this::toDtoFull);
+    }
+
+    private ProductDto toDtoSimple(Product p) {
+        ProductDto dto = new ProductDto();
+        dto.id = p.getId();
+        dto.shopId = p.getShopId();
+        dto.categoryId = p.getCategoryId();
+        dto.name = p.getName();
+        dto.slug = p.getSlug();
+        dto.description = p.getDescription();
+        dto.price = p.getPrice();
+        dto.comparePrice = p.getComparePrice();
+        dto.sku = p.getSku();
+        dto.stockQuantity = p.getStockQuantity();
+        dto.weightGram = p.getWeightGram();
+        dto.status = p.getStatus();
+        dto.ratingAvg = p.getRatingAvg();
+        dto.ratingCount = p.getRatingCount();
+        dto.createdAt = p.getCreatedAt();
+
+        dto.hasVariants = false;
+        dto.totalStock = p.getStockQuantity();
+        dto.minPrice = p.getPrice();
+        dto.maxPrice = p.getPrice();
+        dto.images = new ArrayList<>();
+
+        return dto;
     }
 
     @Override
@@ -129,6 +156,24 @@ public class ProductServiceImpl implements ProductService {
     public ProductDto getBySlug(String slug) {
         Product p = repo.findBySlug(slug).orElseThrow(() -> new IllegalArgumentException("Product not found"));
         return toDto(p);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProductDto getById(Long id) {
+        Product p = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("Product not found"));
+        return toDto(p);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<ProductDto> getAllProducts() {
+        return repo.findAll().stream().map(this::toDto).toList();
+    }
+
+    @Override
+    public ProductDto toDto(Product p) {
+        return toDtoFull(p);
     }
 
     // -------- helpers --------
@@ -150,7 +195,7 @@ public class ProductServiceImpl implements ProductService {
         return s;
     }
 
-    private ProductDto toDto(Product p) {
+    private ProductDto toDtoFull(Product p) {
         ProductDto dto = new ProductDto();
         dto.id = p.getId();
         dto.shopId = p.getShopId();
@@ -168,25 +213,36 @@ public class ProductServiceImpl implements ProductService {
         dto.ratingCount = p.getRatingCount();
         dto.createdAt = p.getCreatedAt();
 
-        if (p.getImages() != null) {
-            dto.images = p.getImages().stream().map(img -> {
-                ProductImageDto idto = new ProductImageDto();
-                idto.id = img.getId();
-                idto.url = img.getUrl();
-                idto.sortOrder = img.getSortOrder();
-                idto.altText = img.getAltText();
-                return idto;
-            }).toList();
+        try {
+            if (p.getImages() != null) {
+                dto.images = p.getImages().stream().map(img -> {
+                    ProductImageDto idto = new ProductImageDto();
+                    idto.id = img.getId();
+                    idto.url = img.getUrl();
+                    idto.sortOrder = img.getSortOrder();
+                    idto.altText = img.getAltText();
+                    return idto;
+                }).toList();
+            }
+        } catch (Exception e) {
+            dto.images = new ArrayList<>();
         }
 
         // Add variant-related data
-        if (p.getVariants() != null && !p.getVariants().isEmpty()) {
-            dto.hasVariants = true;
-            dto.variants = p.getVariants().stream().map(this::convertVariantToDto).toList();
-            dto.totalStock = p.getTotalStock();
-            dto.minPrice = p.getMinPrice();
-            dto.maxPrice = p.getMaxPrice();
-        } else {
+        try {
+            if (p.getVariants() != null && !p.getVariants().isEmpty()) {
+                dto.hasVariants = true;
+                dto.variants = p.getVariants().stream().map(this::convertVariantToDto).toList();
+                dto.totalStock = p.getTotalStock();
+                dto.minPrice = p.getMinPrice();
+                dto.maxPrice = p.getMaxPrice();
+            } else {
+                dto.hasVariants = false;
+                dto.totalStock = p.getStockQuantity();
+                dto.minPrice = p.getPrice();
+                dto.maxPrice = p.getPrice();
+            }
+        } catch (Exception e) {
             dto.hasVariants = false;
             dto.totalStock = p.getStockQuantity();
             dto.minPrice = p.getPrice();
