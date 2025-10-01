@@ -1,0 +1,105 @@
+package com.ecommerce.EcommerceApplication.service;
+
+import com.ecommerce.EcommerceApplication.dto.ShopCreateRequest;
+import com.ecommerce.EcommerceApplication.dto.ShopResponse;
+import com.ecommerce.EcommerceApplication.dto.ShopUpdateRequest;
+import com.ecommerce.EcommerceApplication.model.Shop;
+import com.ecommerce.EcommerceApplication.model.User;
+import com.ecommerce.EcommerceApplication.repository.ShopRepository;
+import com.ecommerce.EcommerceApplication.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class ShopService {
+
+    private final ShopRepository shopRepo;
+    private final UserRepository userRepo;
+
+    private ShopResponse toDto(Shop s) {
+        return ShopResponse.builder()
+                .id(s.getId())
+                .ownerId(s.getOwner().getId())
+                .name(s.getName())
+                .description(s.getDescription())
+                .logoUrl(s.getLogoUrl())
+                .status(s.getStatus())
+                .build();
+    }
+
+    @Transactional
+    public ShopResponse create(Long sellerId, ShopCreateRequest req) {
+        User owner = userRepo.findById(sellerId)
+                .orElseThrow(() -> new IllegalArgumentException("user not found"));
+
+        if (shopRepo.existsByOwnerId(sellerId)) {
+            throw new IllegalStateException("shop already exists");
+        }
+
+        Shop s = new Shop();
+        s.setOwner(owner);
+        s.setName(req.getName());
+        s.setDescription(req.getDescription());
+        s.setLogoUrl(req.getLogoUrl());
+        if (s.getStatus() == null) {
+            s.setStatus("ACTIVE"); 
+        }
+        s = shopRepo.save(s);
+        return toDto(s);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ShopResponse> listActive() {
+        return shopRepo.findByStatus("ACTIVE").stream()
+                .map(this::toDto)
+                .toList();
+
+    }
+
+    @Transactional(readOnly = true)
+    public ShopResponse get(Long id) {
+        return shopRepo.findById(id)
+                .map(this::toDto)
+                .orElseThrow(() -> new IllegalArgumentException("shop not found"));
+    }
+
+    @Transactional
+    public ShopResponse update(Long actorId, Long shopId, ShopUpdateRequest req, boolean actorIsAdmin) {
+        Shop s = shopRepo.findById(shopId)
+                .orElseThrow(() -> new IllegalArgumentException("shop not found"));
+
+        if (!actorIsAdmin && !s.getOwner().getId().equals(actorId)) {
+            throw new AccessDeniedException("not owner");
+        }
+
+        if (req.getName() != null) s.setName(req.getName());
+        if (req.getDescription() != null) s.setDescription(req.getDescription());
+        if (req.getLogoUrl() != null) s.setLogoUrl(req.getLogoUrl());
+
+        s = shopRepo.save(s);
+        return toDto(s);
+    }
+
+    @Transactional
+    public ShopResponse suspendByAdmin(Long adminId, Long shopId, String reason) {
+        Shop s = shopRepo.findById(shopId)
+                .orElseThrow(() -> new IllegalArgumentException("shop not found"));
+
+        s.setStatus("SUSPENDED");
+
+        if (reason != null && !reason.isBlank()) {
+            String prefix = "[SUSPENDED:" + reason + "]";
+            s.setDescription((s.getDescription() == null || s.getDescription().isBlank())
+                    ? prefix
+                    : s.getDescription() + " " + prefix);
+        }
+
+        s = shopRepo.save(s);
+        return toDto(s);
+    }
+}

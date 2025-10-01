@@ -50,16 +50,17 @@ public class ProductController {
                 .map(p -> ResponseEntity.ok(this.toDto(p)))
                 .orElse(ResponseEntity.notFound().build());
     }
+
     @GetMapping("/search")
-public Page<ProductDto> searchProducts(
-        @RequestParam(required = false) String q,
-        @RequestParam(required = false) Long categoryId,
-        @RequestParam(required = false) String status,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "20") int size
-) {
-    return productService.search(q, categoryId, status, org.springframework.data.domain.PageRequest.of(page, size));
-}
+    public Page<ProductDto> searchProducts(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return productService.search(q, categoryId, status, org.springframework.data.domain.PageRequest.of(page, size));
+    }
 
     @PostMapping
     public ResponseEntity<ProductDto> createProduct(@RequestBody Product product) {

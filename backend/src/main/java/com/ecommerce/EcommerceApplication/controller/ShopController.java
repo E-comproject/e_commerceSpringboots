@@ -1,71 +1,65 @@
 package com.ecommerce.EcommerceApplication.controller;
 
-import java.net.URI;
-import java.text.Normalizer;
-import java.util.List;
-import java.util.Locale;
-
-import org.springframework.http.HttpStatus;
+import com.ecommerce.EcommerceApplication.dto.ShopCreateRequest;
+import com.ecommerce.EcommerceApplication.dto.ShopResponse;
+import com.ecommerce.EcommerceApplication.dto.ShopUpdateRequest;
+import com.ecommerce.EcommerceApplication.service.ShopService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
-import com.ecommerce.EcommerceApplication.entity.Shop;
-import com.ecommerce.EcommerceApplication.repository.ShopRepository;
+import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/shops")             // จะได้เป็น /api/shops เพราะโปรเจกต์คุณมี prefix /api อยู่แล้ว
-@CrossOrigin(origins = "http://localhost:3000")
+@RequiredArgsConstructor
 public class ShopController {
 
-    private final ShopRepository repo;
-    public ShopController(ShopRepository repo) { this.repo = repo; }
+    private final ShopService shopService;
 
-    @GetMapping
-    public List<Shop> list() {
-        return repo.findAll();
+    // Public
+    @GetMapping("/shops")
+    public ResponseEntity<List<ShopResponse>> listActive() {
+        return ResponseEntity.ok(shopService.listActive());
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Shop> get(@PathVariable Long id) {
-        return repo.findById(id).map(ResponseEntity::ok)
-                   .orElse(ResponseEntity.notFound().build());
+    // Public
+    @GetMapping("/shops/{id}")
+    public ResponseEntity<ShopResponse> get(@PathVariable Long id) {
+        return ResponseEntity.ok(shopService.get(id));
     }
 
-    @PostMapping
-    public ResponseEntity<Shop> create(@RequestBody Shop shop) {
-        // จำกัด 1 ร้านต่อ 1 ผู้ขาย
-        if (shop.getSellerUserId() == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
-        if (repo.existsBySellerUserId(shop.getSellerUserId())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
-        }
-        // สร้าง slug อัตโนมัติถ้าไม่ส่งมา
-        if (shop.getSlug() == null || shop.getSlug().isBlank()) {
-            shop.setSlug(slugify(shop.getName()));
-        }
-        // กัน slug ซ้ำแบบง่าย
-        String base = slugify(shop.getSlug());
-        String s = base; int i = 2;
-        while (repo.existsBySlug(s)) s = base + "-" + (i++);
-
-        shop.setSlug(s);
-        Shop saved = repo.save(shop);
-        return ResponseEntity.created(URI.create("/api/shops/" + saved.getId()))
-                             .body(saved);
+    // Seller creates own shop (ควบคุม 1 ผู้ขาย 1 ร้าน ใน service)
+    @PreAuthorize("hasRole('SELLER')")
+    @PostMapping("/seller/shops")
+    public ResponseEntity<ShopResponse> create(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody ShopCreateRequest req) {
+        return ResponseEntity.ok(shopService.create(userId, req));
     }
 
-    private String slugify(String input) {
-        String nowhitespace = input.trim().replaceAll("\\s+", "-");
-        String normalized = Normalizer.normalize(nowhitespace, Normalizer.Form.NFD)
-                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
-        String slug = normalized.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9-]", "");
-        return slug.replaceAll("-{2,}", "-").replaceAll("^-|-$", "");
+    // Seller/Admin updates
+    @PreAuthorize("hasAnyRole('SELLER','ADMIN')")
+    @PutMapping("/seller/shops/{id}")
+    public ResponseEntity<ShopResponse> update(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long id,
+            @RequestBody ShopUpdateRequest req) {
+        boolean isAdmin = false; // ให้ service ตัดสินใจเพิ่มได้ภายหลังถ้าต้อง
+        return ResponseEntity.ok(shopService.update(userId, id, req, isAdmin));
+    }
+
+    // Admin suspend
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/admin/shops/{id}/suspend")
+    public ResponseEntity<ShopResponse> suspend(
+            @AuthenticationPrincipal Long adminId,
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body) {
+        String reason = body != null ? body.getOrDefault("reason", "") : "";
+        return ResponseEntity.ok(shopService.suspendByAdmin(adminId, id, reason));
     }
 }

@@ -1,3 +1,4 @@
+
 'use client'
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
@@ -60,6 +61,7 @@ async function enrichProductsWithVariants(products: ProductDto[]): Promise<Produ
         }
       }
     })
+
   )
 
   return enrichedProducts
