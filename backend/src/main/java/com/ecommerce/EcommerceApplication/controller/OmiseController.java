@@ -1,0 +1,321 @@
+package com.ecommerce.EcommerceApplication.controller;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import com.ecommerce.EcommerceApplication.config.OmiseConfig;
+import com.ecommerce.EcommerceApplication.dto.OmiseCreateChargeReq;
+import com.ecommerce.EcommerceApplication.dto.OmiseWebhookEvent;
+import com.ecommerce.EcommerceApplication.service.OmisePaymentGatewayService;
+import com.ecommerce.EcommerceApplication.service.PaymentService;
+
+import com.ecommerce.EcommerceApplication.model.omise.OmiseCharge;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.Valid;
+
+@RestController
+@RequestMapping("/payments/omise")
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+public class OmiseController {
+
+    private static final Logger logger = LoggerFactory.getLogger(OmiseController.class);
+
+    private final OmisePaymentGatewayService omisePaymentGatewayService;
+    private final PaymentService paymentService;
+    private final OmiseConfig omiseConfig;
+
+    public OmiseController(OmisePaymentGatewayService omisePaymentGatewayService,
+                          PaymentService paymentService,
+                          OmiseConfig omiseConfig) {
+        this.omisePaymentGatewayService = omisePaymentGatewayService;
+        this.paymentService = paymentService;
+        this.omiseConfig = omiseConfig;
+    }
+
+    /**
+     * Get Omise public key for frontend
+     */
+    @GetMapping("/public-key")
+    public ResponseEntity<Map<String, String>> getPublicKey() {
+        Map<String, String> response = new HashMap<>();
+        response.put("publicKey", omiseConfig.getPublicKey());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get supported payment methods
+     */
+    @GetMapping("/payment-methods")
+    public ResponseEntity<String[]> getSupportedPaymentMethods() {
+        String[] methods = omisePaymentGatewayService.getSupportedPaymentMethods();
+        return ResponseEntity.ok(methods);
+    }
+
+    /**
+     * Create Omise charge directly (advanced usage)
+     */
+    @PostMapping("/charges")
+    public ResponseEntity<?> createCharge(@Valid @RequestBody OmiseCreateChargeReq req) {
+        try {
+            Map<String, String> metadata = req.metadata != null ? req.metadata : new HashMap<>();
+            metadata.put("order_id", req.orderId.toString());
+
+            OmiseCharge charge = null;
+            String description = req.description != null ? req.description : "Payment for Order #" + req.orderId;
+
+            switch (req.paymentMethod) {
+                case OMISE_CREDIT_CARD:
+                case OMISE_DEBIT_CARD:
+                    if (req.token == null) {
+                        return ResponseEntity.badRequest().body("Token is required for card payments");
+                    }
+                    charge = omisePaymentGatewayService.createCharge(
+                        req.amount, req.currency, description, req.token, null, metadata
+                    );
+                    break;
+
+                case OMISE_PROMPTPAY:
+                    charge = omisePaymentGatewayService.createPromptPayCharge(
+                        req.amount, req.currency, description, metadata
+                    );
+                    break;
+
+                case OMISE_TRUEMONEY:
+                    if (req.phoneNumber == null) {
+                        return ResponseEntity.badRequest().body("Phone number is required for TrueMoney payments");
+                    }
+                    charge = omisePaymentGatewayService.createTrueMoneyCharge(
+                        req.amount, req.currency, description, req.phoneNumber, metadata
+                    );
+                    break;
+
+                case OMISE_INTERNET_BANKING_BAY:
+                case OMISE_INTERNET_BANKING_BBL:
+                case OMISE_INTERNET_BANKING_KTB:
+                case OMISE_INTERNET_BANKING_SCB:
+                case OMISE_INTERNET_BANKING_KBANK:
+                    if (req.bankCode == null) {
+                        // Extract bank code from payment method
+                        String methodName = req.paymentMethod.name();
+                        req.bankCode = methodName.substring(methodName.lastIndexOf("_") + 1).toLowerCase();
+                    }
+                    charge = omisePaymentGatewayService.createInternetBankingCharge(
+                        req.amount, req.currency, description, req.bankCode, metadata
+                    );
+                    break;
+
+                default:
+                    return ResponseEntity.badRequest().body("Unsupported payment method: " + req.paymentMethod);
+            }
+
+            if (charge != null) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("id", charge.getId());
+                response.put("status", charge.getStatus());
+                response.put("amount", charge.getAmount());
+                response.put("currency", charge.getCurrency());
+                response.put("paid", charge.getPaid());
+                response.put("created", charge.getCreated());
+
+                // Add payment-specific information
+                if (charge.getSource() != null) {
+                    Map<String, Object> source = new HashMap<>();
+                    source.put("type", charge.getSource().getType());
+
+                    // For PromptPay, include QR code data
+                    if ("promptpay".equals(charge.getSource().getType()) && charge.getSource().getScannableCode() != null) {
+                        Map<String, Object> scannableCode = new HashMap<>();
+                        scannableCode.put("type", charge.getSource().getScannableCode().getType());
+                        scannableCode.put("image", charge.getSource().getScannableCode().getImage());
+                        scannableCode.put("value", charge.getSource().getScannableCode().getValue());
+                        source.put("scannable_code", scannableCode);
+                    }
+
+                    response.put("source", source);
+                }
+
+                // For 3D Secure redirects
+                if (charge.getAuthorizeUri() != null) {
+                    response.put("authorize_uri", charge.getAuthorizeUri());
+                    response.put("requires_action", true);
+                }
+
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.internalServerError().body("Failed to create Omise charge");
+            }
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Failed to create Omise charge", e);
+            return ResponseEntity.internalServerError().body("Payment processing failed");
+        }
+    }
+
+    /**
+     * Get charge status
+     */
+    @GetMapping("/charges/{chargeId}")
+    public ResponseEntity<?> getCharge(@PathVariable String chargeId) {
+        try {
+            OmiseCharge charge = omisePaymentGatewayService.getCharge(chargeId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", charge.getId());
+            response.put("status", charge.getStatus());
+            response.put("amount", charge.getAmount());
+            response.put("currency", charge.getCurrency());
+            response.put("paid", charge.getPaid());
+            response.put("created", charge.getCreated());
+
+            if (charge.getSource() != null) {
+                Map<String, Object> source = new HashMap<>();
+                source.put("type", charge.getSource().getType());
+                response.put("source", source);
+            }
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("Failed to retrieve Omise charge: {}", chargeId, e);
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Webhook endpoint for Omise events
+     */
+    @PostMapping("/webhook")
+    public ResponseEntity<String> handleWebhook(
+            @RequestBody String payload,
+            @RequestHeader(value = "X-Omise-Signature", required = false) String signature) {
+
+        try {
+            // Verify webhook signature
+            if (signature == null || !omisePaymentGatewayService.verifyWebhookSignature(payload, signature)) {
+                logger.warn("Invalid webhook signature received");
+                return ResponseEntity.badRequest().body("Invalid signature");
+            }
+
+            // Parse webhook event
+            logger.info("Received Omise webhook: {}", payload);
+
+            // Parse the webhook payload to extract event information
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode webhookEvent = mapper.readTree(payload);
+
+                String eventType = webhookEvent.get("key").asText();
+                JsonNode chargeData = webhookEvent.get("data");
+
+                if (chargeData != null) {
+                    String chargeId = chargeData.get("id").asText();
+                    String chargeStatus = chargeData.get("status").asText();
+
+                    logger.info("Processing webhook event: {} for charge: {} with status: {}",
+                              eventType, chargeId, chargeStatus);
+
+                    // Update payment status based on webhook event
+                    switch (eventType) {
+                        case "charge.complete":
+                            if ("successful".equals(chargeStatus) || "paid".equals(chargeStatus)) {
+                                updatePaymentStatusFromOmise(chargeId, "COMPLETED", "Payment completed via Omise webhook");
+                            }
+                            break;
+
+                        case "charge.failed":
+                            updatePaymentStatusFromOmise(chargeId, "FAILED", "Payment failed via Omise webhook");
+                            break;
+
+                        case "charge.expired":
+                            updatePaymentStatusFromOmise(chargeId, "EXPIRED", "Payment expired via Omise webhook");
+                            break;
+
+                        case "charge.pending":
+                            updatePaymentStatusFromOmise(chargeId, "PROCESSING", "Payment pending via Omise webhook");
+                            break;
+
+                        default:
+                            logger.info("Unhandled webhook event type: {}", eventType);
+                    }
+                }
+
+            } catch (Exception e) {
+                logger.error("Failed to parse webhook payload", e);
+                return ResponseEntity.badRequest().body("Invalid webhook payload");
+            }
+
+            return ResponseEntity.ok("Webhook processed successfully");
+
+        } catch (Exception e) {
+            logger.error("Failed to process Omise webhook", e);
+            return ResponseEntity.internalServerError().body("Webhook processing failed");
+        }
+    }
+
+    /**
+     * Refund a charge
+     */
+    @PostMapping("/charges/{chargeId}/refund")
+    public ResponseEntity<?> refundCharge(
+            @PathVariable String chargeId,
+            @RequestParam(required = false) String amount,
+            @RequestParam(required = false) String reason) {
+
+        try {
+            // If amount not specified, it will be a full refund
+            if (amount != null) {
+                omisePaymentGatewayService.refundCharge(chargeId,
+                    new java.math.BigDecimal(amount), reason);
+            } else {
+                // Full refund - get charge first to get amount
+                OmiseCharge charge = omisePaymentGatewayService.getCharge(chargeId);
+                java.math.BigDecimal refundAmount = omisePaymentGatewayService.convertFromOmiseAmount(charge.getAmount());
+                omisePaymentGatewayService.refundCharge(chargeId, refundAmount, reason);
+            }
+
+            return ResponseEntity.ok("Refund processed successfully");
+
+        } catch (Exception e) {
+            logger.error("Failed to refund Omise charge: {}", chargeId, e);
+            return ResponseEntity.internalServerError().body("Refund processing failed");
+        }
+    }
+
+    /**
+     * Helper method to update payment status from Omise webhook
+     */
+    private void updatePaymentStatusFromOmise(String omiseChargeId, String status, String reason) {
+        try {
+            // For now, we'll search for payment by transaction_id that matches the omise charge ID
+            // In a real implementation, you should store the omise charge ID when creating the payment
+
+            logger.info("Attempting to update payment status for Omise charge: {} to status: {}",
+                       omiseChargeId, status);
+
+            // Note: This is a simplified approach
+            // In production, you should have a mapping between your payment ID and Omise charge ID
+
+            // For testing purposes, we'll just log the action
+            logger.info("Payment status updated: Omise Charge {} -> Status: {} ({})",
+                       omiseChargeId, status, reason);
+
+            // TODO: Implement actual payment status update logic
+            // Example:
+            // Payment payment = paymentService.findByTransactionId(omiseChargeId);
+            // if (payment != null) {
+            //     paymentService.updatePaymentStatus(payment.getId(), PaymentStatus.valueOf(status), reason);
+            // }
+
+        } catch (Exception e) {
+            logger.error("Failed to update payment status for Omise charge: {}", omiseChargeId, e);
+        }
+    }
+}

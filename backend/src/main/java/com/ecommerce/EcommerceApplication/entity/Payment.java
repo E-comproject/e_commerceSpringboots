@@ -99,7 +99,17 @@ public class Payment {
         RABBIT_LINE_PAY("Rabbit LINE Pay"),
         CASH_ON_DELIVERY("Cash on Delivery"),
         PAYPAL("PayPal"),
-        STRIPE("Stripe");
+        STRIPE("Stripe"),
+        // Omise specific payment methods
+        OMISE_CREDIT_CARD("Omise Credit Card"),
+        OMISE_DEBIT_CARD("Omise Debit Card"),
+        OMISE_PROMPTPAY("Omise PromptPay"),
+        OMISE_TRUEMONEY("Omise TrueMoney"),
+        OMISE_INTERNET_BANKING_BAY("Omise Bank of Ayudhya"),
+        OMISE_INTERNET_BANKING_BBL("Omise Bangkok Bank"),
+        OMISE_INTERNET_BANKING_KTB("Omise Krung Thai Bank"),
+        OMISE_INTERNET_BANKING_SCB("Omise Siam Commercial Bank"),
+        OMISE_INTERNET_BANKING_KBANK("Omise Kasikorn Bank");
 
         private final String displayName;
 

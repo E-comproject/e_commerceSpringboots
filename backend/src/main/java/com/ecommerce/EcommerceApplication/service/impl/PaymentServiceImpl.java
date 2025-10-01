@@ -3,8 +3,13 @@ package com.ecommerce.EcommerceApplication.service.impl;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,17 +27,23 @@ import com.ecommerce.EcommerceApplication.entity.Payment.PaymentStatus;
 import com.ecommerce.EcommerceApplication.repository.OrderRepository;
 import com.ecommerce.EcommerceApplication.repository.PaymentRepository;
 import com.ecommerce.EcommerceApplication.service.PaymentService;
+import com.ecommerce.EcommerceApplication.service.OmisePaymentGatewayService;
+import com.ecommerce.EcommerceApplication.model.omise.OmiseCharge;
 
 @Service
 @Transactional
 public class PaymentServiceImpl implements PaymentService {
 
+    private static final Logger logger = LoggerFactory.getLogger(PaymentServiceImpl.class);
+
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
+    private final OmisePaymentGatewayService omisePaymentGatewayService;
 
-    public PaymentServiceImpl(PaymentRepository paymentRepository, OrderRepository orderRepository) {
+    public PaymentServiceImpl(PaymentRepository paymentRepository, OrderRepository orderRepository, OmisePaymentGatewayService omisePaymentGatewayService) {
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
+        this.omisePaymentGatewayService = omisePaymentGatewayService;
     }
 
     @Override
@@ -317,9 +328,12 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private boolean simulatePaymentGateway(Payment payment, String gatewayData) {
-        // Simulate payment gateway processing
-        // In real implementation, this would call actual payment gateway APIs
+        // Handle Omise payment methods
+        if (isOmisePaymentMethod(payment.getPaymentMethod())) {
+            return processOmisePayment(payment, gatewayData);
+        }
 
+        // Legacy payment gateway simulation
         switch (payment.getPaymentMethod()) {
             case CASH_ON_DELIVERY:
                 return true; // COD is always successful at creation
@@ -331,6 +345,150 @@ public class PaymentServiceImpl implements PaymentService {
                 return Math.random() > 0.05; // 95% success rate
             default:
                 return Math.random() > 0.2; // 80% success rate
+        }
+    }
+
+    private boolean isOmisePaymentMethod(PaymentMethod method) {
+        return method.name().startsWith("OMISE_");
+    }
+
+    private boolean processOmisePayment(Payment payment, String gatewayData) {
+        try {
+            // Parse gateway data (should contain token, phone number, or bank code)
+            Map<String, String> metadata = new HashMap<>();
+            metadata.put("payment_id", payment.getId().toString());
+            metadata.put("order_id", payment.getOrderId().toString());
+
+            OmiseCharge charge = null;
+            String description = "Payment for Order #" + payment.getOrder().getOrderNumber();
+
+            switch (payment.getPaymentMethod()) {
+                case OMISE_CREDIT_CARD:
+                case OMISE_DEBIT_CARD:
+                    charge = omisePaymentGatewayService.createCharge(
+                        payment.getAmount(),
+                        payment.getCurrency(),
+                        description,
+                        gatewayData, // token from frontend
+                        null, // customer ID
+                        metadata
+                    );
+                    break;
+
+                case OMISE_PROMPTPAY:
+                    charge = omisePaymentGatewayService.createPromptPayCharge(
+                        payment.getAmount(),
+                        payment.getCurrency(),
+                        description,
+                        metadata
+                    );
+                    break;
+
+                case OMISE_TRUEMONEY:
+                    // gatewayData should contain phone number
+                    charge = omisePaymentGatewayService.createTrueMoneyCharge(
+                        payment.getAmount(),
+                        payment.getCurrency(),
+                        description,
+                        gatewayData, // phone number
+                        metadata
+                    );
+                    break;
+
+                case OMISE_INTERNET_BANKING_BAY:
+                    charge = omisePaymentGatewayService.createInternetBankingCharge(
+                        payment.getAmount(),
+                        payment.getCurrency(),
+                        description,
+                        "bay",
+                        metadata
+                    );
+                    break;
+
+                case OMISE_INTERNET_BANKING_BBL:
+                    charge = omisePaymentGatewayService.createInternetBankingCharge(
+                        payment.getAmount(),
+                        payment.getCurrency(),
+                        description,
+                        "bbl",
+                        metadata
+                    );
+                    break;
+
+                case OMISE_INTERNET_BANKING_KTB:
+                    charge = omisePaymentGatewayService.createInternetBankingCharge(
+                        payment.getAmount(),
+                        payment.getCurrency(),
+                        description,
+                        "ktb",
+                        metadata
+                    );
+                    break;
+
+                case OMISE_INTERNET_BANKING_SCB:
+                    charge = omisePaymentGatewayService.createInternetBankingCharge(
+                        payment.getAmount(),
+                        payment.getCurrency(),
+                        description,
+                        "scb",
+                        metadata
+                    );
+                    break;
+
+                case OMISE_INTERNET_BANKING_KBANK:
+                    charge = omisePaymentGatewayService.createInternetBankingCharge(
+                        payment.getAmount(),
+                        payment.getCurrency(),
+                        description,
+                        "kbank",
+                        metadata
+                    );
+                    break;
+
+                default:
+                    logger.warn("Unsupported Omise payment method: {}", payment.getPaymentMethod());
+                    return false;
+            }
+
+            if (charge != null) {
+                // Store Omise charge information
+                payment.setGatewayTransactionId(charge.getId());
+
+                // Convert Omise response to JSON and store
+                Map<String, Object> responseData = new HashMap<>();
+                responseData.put("omise_charge_id", charge.getId());
+                responseData.put("omise_status", charge.getStatus());
+                responseData.put("omise_paid", charge.getPaid());
+                responseData.put("omise_created", charge.getCreated());
+
+                if (charge.getSource() != null) {
+                    responseData.put("omise_source_type", charge.getSource().getType());
+                }
+
+                payment.setGatewayResponse(responseData.toString());
+
+                // Handle different charge statuses
+                switch (charge.getStatus()) {
+                    case "successful":
+                        return true;
+                    case "pending":
+                        // For methods like PromptPay, payment is pending until customer pays
+                        payment.setStatus(PaymentStatus.PROCESSING);
+                        return false; // Don't mark as completed yet
+                    case "failed":
+                        return false;
+                    default:
+                        logger.info("Omise charge created with status: {}", charge.getStatus());
+                        return "successful".equals(charge.getStatus());
+                }
+            }
+
+            return false;
+
+        } catch (Exception e) {
+            logger.error("Failed to process Omise payment", e);
+            payment.setFailureReason("Omise payment processing failed: " + e.getMessage());
+            return false;
         }
     }
 

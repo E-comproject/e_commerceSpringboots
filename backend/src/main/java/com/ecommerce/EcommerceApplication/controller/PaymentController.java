@@ -18,7 +18,7 @@ import com.ecommerce.EcommerceApplication.service.PaymentService;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/payments")
+@RequestMapping("/payments")
 @CrossOrigin(origins = "http://localhost:3000")
 public class PaymentController {
 

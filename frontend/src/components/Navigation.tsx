@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ShoppingCart, MessageCircle, Store, Package } from 'lucide-react';
+import { Home, ShoppingCart, MessageCircle, Store, Package, CreditCard } from 'lucide-react';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -13,6 +13,7 @@ export default function Navigation() {
     { href: '/cart', label: 'ตะกร้า', icon: ShoppingCart },
     { href: '/shops-test', label: 'ร้านค้า', icon: Store },
     { href: '/chat', label: 'แชท', icon: MessageCircle },
+    { href: '/payment-demo', label: 'ทดสอบ Payment', icon: CreditCard },
   ];
 
   return (
