@@ -1,14 +1,11 @@
-import type { Metadata } from 'next'
+'use client';
+
 import { Inter } from 'next/font/google'
 import '@/styles/globals/globals.css'
+import { AuthProvider } from '@/contexts/AuthContext'
 import Navigation from '@/components/Navigation'
 
 const inter = Inter({ subsets: ['latin'] })
-
-export const metadata: Metadata = {
-  title: 'E-commerce Store',
-  description: 'Modern e-commerce platform built with Next.js',
-}
 
 export default function RootLayout({
   children,
@@ -18,13 +15,15 @@ export default function RootLayout({
   return (
     <html lang="th">
       <head>
+        <title>E-commerce Store</title>
+        <meta name="description" content="Modern e-commerce platform built with Next.js" />
         <script src="https://cdn.omise.co/omise.js"></script>
       </head>
       <body className={inter.className}>
-        <Navigation />
-        <main className="min-h-screen bg-gray-50">
+        <AuthProvider>
+          <Navigation />
           {children}
-        </main>
+        </AuthProvider>
       </body>
     </html>
   )
