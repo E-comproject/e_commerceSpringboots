@@ -21,14 +21,14 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      console.log('✅ Login successful');
-      router.push('/'); // Redirect to home or dashboard
+      console.log('✅ Login successful, redirecting...');
+      // Use window.location.href for full page reload to ensure auth state is loaded
+      window.location.href = '/';
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
         'การเข้าสู่ระบบล้มเหลว กรุณาตรวจสอบอีเมลและรหัสผ่าน'
       );
-    } finally {
       setLoading(false);
     }
   };

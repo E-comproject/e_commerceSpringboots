@@ -24,23 +24,36 @@ import api from '@/lib/api';
 
 interface OrderItem {
   id: number;
-  productName?: string;
-  variantOptions?: any;
+  productId: number;
+  shopId: number;
+  productName: string;
+  productSku?: string;
+  unitPrice: number;
   quantity: number;
-  price: number;
+  totalPrice: number;
+  status?: string;
+  variantId?: number;
+  variantSku?: string;
+  variantTitle?: string;
+  variantOptions?: Record<string, string>;
 }
 
 interface Order {
   id: number;
+  orderNumber: string;
   userId: number;
   userName?: string;
   userEmail?: string;
-  totalAmount: number;
   status: string;
+  subtotal: number;
+  shippingFee: number;
+  taxAmount: number;
+  totalAmount: number;
+  shippingAddressJson?: string;
+  billingAddressJson?: string;
+  notes?: string;
   createdAt: string;
-  orderItems?: OrderItem[];
-  shippingAddress?: string;
-  phoneNumber?: string;
+  items: OrderItem[];
 }
 
 export default function OrdersPage() {
@@ -53,128 +66,173 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [allOrders, setAllOrders] = useState<Order[]>([]); // For stats calculation
 
   useEffect(() => {
     if (!shopLoading && shop) {
       fetchOrders();
     }
+  }, [shop, shopLoading, statusFilter, page]);
+
+  // Fetch all orders once for stats
+  useEffect(() => {
+    if (!shopLoading && shop && allOrders.length === 0) {
+      fetchAllOrders();
+    }
   }, [shop, shopLoading]);
+
+  const fetchAllOrders = async () => {
+    try {
+      // Fetch all orders for stats (no pagination, large size)
+      const response = await api.get('/orders/seller/my-shop-orders', {
+        params: { page: 0, size: 10000 }
+      });
+      const data = response.data;
+      setAllOrders(data.content || []);
+    } catch (error: any) {
+      console.error('Failed to fetch all orders for stats:', error);
+      // If fails, use current orders as fallback
+      setAllOrders(orders);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      // Mock data for now - replace with actual API call
-      const mockOrders: Order[] = [
-        {
-          id: 1,
-          userId: 1,
-          userName: 'สมชาย ใจดี',
-          userEmail: 'somchai@example.com',
-          totalAmount: 1250,
-          status: 'PENDING',
-          createdAt: '2024-01-15T10:30:00',
-          shippingAddress: '123 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110',
-          phoneNumber: '081-234-5678',
-          orderItems: [
-            { id: 1, productName: 'เสื้อยืดสีขาว ไซส์ M', quantity: 2, price: 500 },
-            { id: 2, productName: 'กางเกงยีนส์ ขายาว', quantity: 1, price: 750 },
-          ],
-        },
-        {
-          id: 2,
-          userId: 2,
-          userName: 'สมหญิง จันทร์เพ็ญ',
-          userEmail: 'somying@example.com',
-          totalAmount: 3450,
-          status: 'PROCESSING',
-          createdAt: '2024-01-14T15:20:00',
-          shippingAddress: '456 ถนนพระราม 4 แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110',
-          phoneNumber: '082-345-6789',
-          orderItems: [
-            { id: 3, productName: 'รองเท้าผ้าใบ ไซส์ 39', quantity: 1, price: 2200 },
-            { id: 4, productName: 'กระเป๋าสะพาย สีน้ำตาล', quantity: 1, price: 1250 },
-          ],
-        },
-        {
-          id: 3,
-          userId: 3,
-          userName: 'วิชัย สมหวัง',
-          userEmail: 'wichai@example.com',
-          totalAmount: 890,
-          status: 'SHIPPED',
-          createdAt: '2024-01-13T09:15:00',
-          shippingAddress: '789 ถนนรามคำแหง แขวงหัวหมาก เขตบางกะปิ กรุงเทพฯ 10310',
-          phoneNumber: '083-456-7890',
-          orderItems: [
-            { id: 5, productName: 'เสื้อเชิ้ตลายสก็อต ไซส์ L', quantity: 1, price: 890 },
-          ],
-        },
-        {
-          id: 4,
-          userId: 4,
-          userName: 'สุภาพร ศรีสุข',
-          userEmail: 'supaporn@example.com',
-          totalAmount: 2100,
-          status: 'COMPLETED',
-          createdAt: '2024-01-12T14:45:00',
-          shippingAddress: '321 ถนนงามวงศ์วาน แขวงทุ่งสองห้อง เขตหลักสี่ กรุงเทพฯ 10900',
-          phoneNumber: '084-567-8901',
-          orderItems: [
-            { id: 6, productName: 'รองเท้าแตะหนัง ไซส์ 39', quantity: 1, price: 2100 },
-          ],
-        },
-        {
-          id: 5,
-          userId: 5,
-          userName: 'ประยุทธ์ มานะดี',
-          userEmail: 'prayut@example.com',
-          totalAmount: 450,
-          status: 'CANCELLED',
-          createdAt: '2024-01-11T11:20:00',
-          shippingAddress: '654 ถนนเพชรเกษม แขวงหนองแขม เขตหนองแขม กรุงเทพฯ 10400',
-          phoneNumber: '085-678-9012',
-          orderItems: [
-            { id: 7, productName: 'หมวกแก๊ป สีดำ', quantity: 1, price: 450 },
-          ],
-        },
-      ];
+      setError('');
 
-      setOrders(mockOrders);
-    } catch (error) {
+      // Build query parameters
+      const params: any = {
+        page,
+        size: 20,
+      };
+
+      // Add status filter if not 'ALL'
+      if (statusFilter !== 'ALL') {
+        params.status = statusFilter;
+      }
+
+      const response = await api.get('/orders/seller/my-shop-orders', { params });
+      const data = response.data;
+
+      // Handle Spring Boot Page response
+      setOrders(data.content || []);
+      setTotalPages(data.totalPages || 0);
+    } catch (error: any) {
       console.error('Failed to fetch orders:', error);
-      setError('ไม่สามารถโหลดข้อมูลคำสั่งซื้อได้');
+      const errorData = error.response?.data;
+
+      // Handle error message - it might be a string or an object
+      let errorMessage = 'ไม่สามารถโหลดข้อมูลคำสั่งซื้อได้';
+      if (typeof errorData === 'string') {
+        errorMessage = errorData;
+      } else if (errorData?.message) {
+        errorMessage = errorData.message;
+      } else if (errorData?.error) {
+        errorMessage = errorData.error;
+      }
+
+      if (error.response?.status === 400 && errorMessage.includes('does not have a shop')) {
+        setError('คุณยังไม่มีร้านค้า กรุณาสร้างร้านค้าก่อน');
+        router.push('/seller/create-shop');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Define allowed status transitions (matches backend OrderStatus.java)
+  const getAllowedTransitions = (currentStatus: string): string[] => {
+    const transitions: Record<string, string[]> = {
+      PENDING: ['PAYMENT_PENDING', 'PAID', 'CONFIRMED', 'CANCELLED', 'ON_HOLD'],
+      PAYMENT_PENDING: ['PAID', 'PAYMENT_FAILED', 'CANCELLED'],
+      PAID: ['CONFIRMED', 'CANCELLED', 'REFUNDED'],
+      PAYMENT_FAILED: ['PAYMENT_PENDING', 'CANCELLED'],
+      CONFIRMED: ['PROCESSING', 'READY_TO_SHIP', 'CANCELLED', 'REFUNDED'],
+      PROCESSING: ['READY_TO_SHIP', 'ON_HOLD', 'CANCELLED', 'REFUNDED'],
+      READY_TO_SHIP: ['SHIPPED', 'ON_HOLD', 'CANCELLED'],
+      SHIPPED: ['OUT_FOR_DELIVERY', 'DELIVERED', 'RETURNED'],
+      OUT_FOR_DELIVERY: ['DELIVERED', 'RETURNED', 'DISPUTED'],
+      DELIVERED: ['COMPLETED', 'RETURNED', 'DISPUTED'],
+      ON_HOLD: ['PENDING', 'CONFIRMED', 'PROCESSING', 'CANCELLED'],
+      COMPLETED: ['DISPUTED', 'RETURNED'],
+      CANCELLED: [],
+      REFUNDED: [],
+      RETURNED: ['REFUNDED'],
+      DISPUTED: ['COMPLETED', 'CANCELLED', 'REFUNDED'],
+    };
+    return transitions[currentStatus] || [];
+  };
+
   const handleUpdateOrderStatus = async (orderId: number, newStatus: string) => {
     try {
-      // await api.put(`/seller/orders/${orderId}/status`, { status: newStatus });
+      await api.put(`/orders/${orderId}/status`, null, {
+        params: { status: newStatus }
+      });
       setSuccess('อัปเดตสถานะสำเร็จ');
       fetchOrders();
+      fetchAllOrders(); // Refresh stats
       setTimeout(() => setSuccess(''), 3000);
     } catch (error: any) {
-      setError(error.response?.data?.message || 'ไม่สามารถอัปเดตสถานะได้');
-      setTimeout(() => setError(''), 3000);
+      const errorData = error.response?.data;
+      let errorMessage = 'ไม่สามารถอัปเดตสถานะได้';
+
+      if (typeof errorData === 'string') {
+        errorMessage = errorData;
+      } else if (errorData?.message) {
+        errorMessage = errorData.message;
+      } else if (errorData?.error) {
+        errorMessage = errorData.error;
+      }
+
+      setError(errorMessage);
+      setTimeout(() => setError(''), 5000);
     }
   };
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
       order.userName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.id.toString().includes(searchQuery);
-    const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    return matchesSearch;
   });
 
   const getStatusBadge = (status: string) => {
     const configs = {
+      // Order Creation Phase
       PENDING: { color: 'bg-yellow-100 text-yellow-800', icon: Clock, label: 'รอดำเนินการ' },
-      PROCESSING: { color: 'bg-blue-100 text-blue-800', icon: Package, label: 'กำลังเตรียมสินค้า' },
-      SHIPPED: { color: 'bg-purple-100 text-purple-800', icon: Truck, label: 'กำลังจัดส่ง' },
-      COMPLETED: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'สำเร็จ' },
+
+      // Payment Phase
+      PAYMENT_PENDING: { color: 'bg-orange-100 text-orange-800', icon: Clock, label: 'รอชำระเงิน' },
+      PAID: { color: 'bg-cyan-100 text-cyan-800', icon: CheckCircle, label: 'ชำระแล้ว' },
+      PAYMENT_FAILED: { color: 'bg-rose-100 text-rose-800', icon: XCircle, label: 'ชำระไม่สำเร็จ' },
+
+      // Processing Phase
+      CONFIRMED: { color: 'bg-blue-100 text-blue-800', icon: CheckCircle, label: 'ยืนยันแล้ว' },
+      PROCESSING: { color: 'bg-indigo-100 text-indigo-800', icon: Package, label: 'กำลังเตรียมสินค้า' },
+
+      // Fulfillment Phase
+      READY_TO_SHIP: { color: 'bg-purple-100 text-purple-800', icon: Package, label: 'พร้อมจัดส่ง' },
+      SHIPPED: { color: 'bg-violet-100 text-violet-800', icon: Truck, label: 'จัดส่งแล้ว' },
+      OUT_FOR_DELIVERY: { color: 'bg-fuchsia-100 text-fuchsia-800', icon: Truck, label: 'กำลังจัดส่ง' },
+      DELIVERED: { color: 'bg-emerald-100 text-emerald-800', icon: CheckCircle, label: 'จัดส่งสำเร็จ' },
+
+      // Completion Phase
+      COMPLETED: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'เสร็จสิ้น' },
+
+      // Problem/Cancel Phase
       CANCELLED: { color: 'bg-red-100 text-red-800', icon: XCircle, label: 'ยกเลิก' },
+      REFUNDED: { color: 'bg-gray-100 text-gray-800', icon: XCircle, label: 'คืนเงินแล้ว' },
+      RETURNED: { color: 'bg-slate-100 text-slate-800', icon: XCircle, label: 'ส่งคืนแล้ว' },
+
+      // Special Cases
+      ON_HOLD: { color: 'bg-amber-100 text-amber-800', icon: Clock, label: 'ระงับ' },
+      DISPUTED: { color: 'bg-orange-200 text-orange-900', icon: AlertCircle, label: 'ร้องเรียน' },
     };
     const config = configs[status as keyof typeof configs] || configs.PENDING;
     const Icon = config.icon;
@@ -225,30 +283,39 @@ export default function OrdersPage() {
             </div>
           )}
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {['ALL', 'PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED'].map((status) => {
-              const count = status === 'ALL' ? orders.length : orders.filter((o) => o.status === status).length;
-              const labels = {
+          {/* Stats Cards - Following correct order flow */}
+          <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 gap-2">
+            {['ALL', 'PENDING', 'CONFIRMED', 'PROCESSING', 'READY_TO_SHIP', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'COMPLETED', 'CANCELLED'].map((status) => {
+              // Use allOrders for accurate count across all pages
+              const count = status === 'ALL' ? allOrders.length : allOrders.filter((o) => o.status === status).length;
+              const labels: Record<string, string> = {
                 ALL: 'ทั้งหมด',
-                PENDING: 'รอดำเนินการ',
-                PROCESSING: 'กำลังเตรียม',
-                SHIPPED: 'กำลังจัดส่ง',
-                COMPLETED: 'สำเร็จ',
+                PENDING: 'รอยืนยัน',
+                CONFIRMED: 'ยืนยันแล้ว',
+                PROCESSING: 'เตรียมสินค้า',
+                READY_TO_SHIP: 'พร้อมส่ง',
+                SHIPPED: 'ส่งแล้ว',
+                OUT_FOR_DELIVERY: 'กำลังส่ง',
+                DELIVERED: 'ส่งสำเร็จ',
+                COMPLETED: 'เสร็จสิ้น',
+                CANCELLED: 'ยกเลิก',
               };
 
               return (
                 <button
                   key={status}
-                  onClick={() => setStatusFilter(status)}
-                  className={`p-4 rounded-xl border-2 transition-all ${
+                  onClick={() => {
+                    setStatusFilter(status);
+                    setPage(0);
+                  }}
+                  className={`p-2.5 rounded-xl border-2 transition-all ${
                     statusFilter === status
                       ? 'bg-white border-blue-500 shadow-lg'
                       : 'bg-white/80 border-gray-200 hover:border-blue-300 hover:shadow-md'
                   }`}
                 >
-                  <p className="text-xs text-gray-600 mb-1">{labels[status as keyof typeof labels]}</p>
-                  <p className="text-2xl font-bold text-gray-900">{count}</p>
+                  <p className="text-xs text-gray-600 mb-0.5 line-clamp-1">{labels[status]}</p>
+                  <p className="text-lg font-bold text-gray-900">{count}</p>
                 </button>
               );
             })}
@@ -287,7 +354,7 @@ export default function OrdersPage() {
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-bold text-gray-900">คำสั่งซื้อ #{order.id}</h3>
+                          <h3 className="text-lg font-bold text-gray-900">{order.orderNumber}</h3>
                           {getStatusBadge(order.status)}
                         </div>
                         <div className="space-y-1 text-sm text-gray-600">
@@ -303,7 +370,7 @@ export default function OrdersPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-gray-900">฿{order.totalAmount.toLocaleString()}</p>
-                        <p className="text-sm text-gray-500">{order.orderItems?.length || 0} รายการ</p>
+                        <p className="text-sm text-gray-500">{order.items?.length || 0} รายการ</p>
                       </div>
                     </div>
 
@@ -311,12 +378,26 @@ export default function OrdersPage() {
                     <div className="bg-gray-50 rounded-lg p-4 mb-4">
                       <h4 className="font-semibold text-gray-900 mb-3 text-sm">รายการสินค้า</h4>
                       <div className="space-y-2">
-                        {order.orderItems?.map((item) => (
-                          <div key={item.id} className="flex items-center justify-between text-sm">
-                            <span className="text-gray-700">
-                              {item.productName} x {item.quantity}
-                            </span>
-                            <span className="font-medium text-gray-900">฿{(item.price * item.quantity).toLocaleString()}</span>
+                        {order.items?.map((item) => (
+                          <div key={item.id} className="flex items-start justify-between text-sm">
+                            <div className="flex-1">
+                              <span className="text-gray-900 font-medium">
+                                {item.productName}
+                              </span>
+                              {item.variantOptions && Object.keys(item.variantOptions).length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {Object.entries(item.variantOptions).map(([key, value]) => (
+                                    <span key={key} className="text-xs bg-white border border-gray-300 text-gray-600 px-1.5 py-0.5 rounded">
+                                      {key}: {value}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              <span className="text-gray-500 text-xs block mt-1">
+                                x {item.quantity}
+                              </span>
+                            </div>
+                            <span className="font-medium text-gray-900 ml-2">฿{item.totalPrice.toLocaleString()}</span>
                           </div>
                         ))}
                       </div>
@@ -335,7 +416,7 @@ export default function OrdersPage() {
                       {order.status === 'PENDING' && (
                         <div className="flex gap-2">
                           <button
-                            onClick={() => handleUpdateOrderStatus(order.id, 'PROCESSING')}
+                            onClick={() => handleUpdateOrderStatus(order.id, 'CONFIRMED')}
                             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                           >
                             ยืนยันคำสั่งซื้อ
@@ -349,12 +430,67 @@ export default function OrdersPage() {
                         </div>
                       )}
 
+                      {order.status === 'CONFIRMED' && (
+                        <button
+                          onClick={() => handleUpdateOrderStatus(order.id, 'PROCESSING')}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                        >
+                          เริ่มเตรียมสินค้า
+                        </button>
+                      )}
+
                       {order.status === 'PROCESSING' && (
+                        <button
+                          onClick={() => handleUpdateOrderStatus(order.id, 'READY_TO_SHIP')}
+                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                        >
+                          พร้อมจัดส่ง
+                        </button>
+                      )}
+
+                      {order.status === 'READY_TO_SHIP' && (
                         <button
                           onClick={() => handleUpdateOrderStatus(order.id, 'SHIPPED')}
                           className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
                         >
                           จัดส่งสินค้า
+                        </button>
+                      )}
+
+                      {order.status === 'SHIPPED' && (
+                        <button
+                          onClick={() => handleUpdateOrderStatus(order.id, 'OUT_FOR_DELIVERY')}
+                          className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium"
+                        >
+                          อยู่ระหว่างจัดส่ง
+                        </button>
+                      )}
+
+                      {order.status === 'OUT_FOR_DELIVERY' && (
+                        <button
+                          onClick={() => handleUpdateOrderStatus(order.id, 'DELIVERED')}
+                          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium"
+                        >
+                          จัดส่งสำเร็จ
+                        </button>
+                      )}
+
+                      {order.status === 'DELIVERED' && (
+                        <button
+                          onClick={() => handleUpdateOrderStatus(order.id, 'COMPLETED')}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                        >
+                          ปิดคำสั่งซื้อ
+                        </button>
+                      )}
+
+                      {/* Quick Action Menu for other statuses */}
+                      {!['PENDING', 'CONFIRMED', 'PROCESSING', 'READY_TO_SHIP', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'COMPLETED', 'CANCELLED'].includes(order.status) && (
+                        <button
+                          onClick={() => setSelectedOrder(order)}
+                          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
+                        >
+                          อัพเดทสถานะ
                         </button>
                       )}
                     </div>
@@ -371,56 +507,194 @@ export default function OrdersPage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-2xl">
-              <h2 className="text-2xl font-bold">รายละเอียดคำสั่งซื้อ #{selectedOrder.id}</h2>
+              <h2 className="text-2xl font-bold">รายละเอียดคำสั่งซื้อ {selectedOrder.orderNumber}</h2>
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Status */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">สถานะ</label>
-                {getStatusBadge(selectedOrder.status)}
+              {/* Status Update Section */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <label className="block text-sm font-semibold text-gray-900 mb-3">อัพเดทสถานะคำสั่งซื้อ</label>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-600 mb-2">สถานะปัจจุบัน:</p>
+                    {getStatusBadge(selectedOrder.status)}
+                  </div>
+                </div>
+
+                {(() => {
+                  const allowedStatuses = getAllowedTransitions(selectedOrder.status);
+                  const statusLabels: Record<string, string> = {
+                    PENDING: '🔵 รอดำเนินการ',
+                    PAYMENT_PENDING: '💳 รอชำระเงิน',
+                    PAID: '💳 ชำระแล้ว',
+                    PAYMENT_FAILED: '💳 ชำระไม่สำเร็จ',
+                    CONFIRMED: '📦 ยืนยันแล้ว',
+                    PROCESSING: '📦 กำลังเตรียมสินค้า',
+                    READY_TO_SHIP: '🚚 พร้อมจัดส่ง',
+                    SHIPPED: '🚚 จัดส่งแล้ว',
+                    OUT_FOR_DELIVERY: '🚚 กำลังจัดส่ง',
+                    DELIVERED: '🚚 จัดส่งสำเร็จ',
+                    COMPLETED: '✅ เสร็จสิ้น',
+                    CANCELLED: '❌ ยกเลิก',
+                    REFUNDED: '❌ คืนเงินแล้ว',
+                    RETURNED: '❌ ส่งคืนแล้ว',
+                    ON_HOLD: '⚠️ ระงับ',
+                    DISPUTED: '⚠️ ร้องเรียน',
+                  };
+
+                  if (allowedStatuses.length === 0) {
+                    return (
+                      <div className="bg-gray-100 rounded-lg p-4 text-center">
+                        <p className="text-sm text-gray-600">ไม่สามารถเปลี่ยนสถานะได้ (สถานะสุดท้าย)</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <>
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-gray-700">เลือกสถานะถัดไป:</p>
+                        <div className="grid grid-cols-1 gap-2">
+                          {allowedStatuses.map((status) => (
+                            <button
+                              key={status}
+                              onClick={() => {
+                                if (confirm(`ต้องการเปลี่ยนสถานะเป็น "${statusLabels[status]}" ใช่หรือไม่?`)) {
+                                  handleUpdateOrderStatus(selectedOrder.id, status);
+                                  setSelectedOrder(null);
+                                }
+                              }}
+                              className="w-full px-4 py-2.5 bg-white border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left text-sm font-medium text-gray-900"
+                            >
+                              {statusLabels[status]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-3 italic">
+                        💡 แสดงเฉพาะสถานะที่สามารถเปลี่ยนได้จากสถานะปัจจุบัน
+                      </p>
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Customer Info */}
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">ข้อมูลลูกค้า</h3>
-                <div className="space-y-2 text-sm">
+                <div className="bg-gray-50 rounded-lg p-4 space-y-3 text-sm">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-gray-500" />
-                    <span className="text-gray-700">{selectedOrder.userName}</span>
+                    <span className="font-medium text-gray-900">{selectedOrder.userName}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-gray-500" />
-                    <span className="text-gray-700">{selectedOrder.phoneNumber}</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
-                    <span className="text-gray-700">{selectedOrder.shippingAddress}</span>
-                  </div>
+                  {selectedOrder.userEmail && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500">📧</span>
+                      <span className="text-gray-700">{selectedOrder.userEmail}</span>
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* Shipping Address */}
+              {selectedOrder.shippingAddressJson && (() => {
+                try {
+                  const address = JSON.parse(selectedOrder.shippingAddressJson);
+                  return (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <MapPin className="h-5 w-5 text-gray-600" />
+                        ที่อยู่จัดส่ง
+                      </h3>
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+                        <p className="font-medium text-gray-900">{address.fullName}</p>
+                        {address.phone && (
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <Phone className="h-4 w-4 text-gray-500" />
+                            <span>{address.phone}</span>
+                          </div>
+                        )}
+                        {address.email && (
+                          <p className="text-gray-700">📧 {address.email}</p>
+                        )}
+                        <div className="pt-2 border-t border-gray-200 text-gray-700 leading-relaxed">
+                          <p>{address.addressLine1}</p>
+                          {address.addressLine2 && <p>{address.addressLine2}</p>}
+                          <p>
+                            {address.city} {address.province} {address.postalCode}
+                          </p>
+                          <p>{address.country || 'ประเทศไทย'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                } catch (e) {
+                  return (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-3">ที่อยู่จัดส่ง</h3>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-sm text-gray-700">{selectedOrder.shippingAddressJson}</p>
+                      </div>
+                    </div>
+                  );
+                }
+              })()}
 
               {/* Order Items */}
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">รายการสินค้า</h3>
                 <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                  {selectedOrder.orderItems?.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between">
-                      <div>
+                  {selectedOrder.items?.map((item) => (
+                    <div key={item.id} className="flex items-start justify-between border-b border-gray-200 pb-3 last:border-0 last:pb-0">
+                      <div className="flex-1">
                         <p className="font-medium text-gray-900">{item.productName}</p>
-                        <p className="text-sm text-gray-500">จำนวน: {item.quantity}</p>
+                        {item.variantOptions && Object.keys(item.variantOptions).length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {Object.entries(item.variantOptions).map(([key, value]) => (
+                              <span key={key} className="text-xs bg-white border border-gray-300 text-gray-700 px-2 py-0.5 rounded">
+                                {key}: {value}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-sm text-gray-500 mt-1">
+                          ฿{item.unitPrice.toLocaleString()} × {item.quantity} ชิ้น
+                        </p>
                       </div>
-                      <p className="font-bold text-gray-900">฿{(item.price * item.quantity).toLocaleString()}</p>
+                      <p className="font-bold text-gray-900 ml-4">฿{item.totalPrice.toLocaleString()}</p>
                     </div>
                   ))}
-                  <div className="pt-3 border-t border-gray-200">
-                    <div className="flex items-center justify-between text-lg font-bold">
+                  <div className="pt-3 border-t border-gray-200 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">ยอดรวมสินค้า</span>
+                      <span className="text-gray-900">฿{selectedOrder.subtotal.toLocaleString()}</span>
+                    </div>
+                    {selectedOrder.shippingFee > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">ค่าจัดส่ง</span>
+                        <span className="text-gray-900">฿{selectedOrder.shippingFee.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {selectedOrder.taxAmount > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">ภาษี</span>
+                        <span className="text-gray-900">฿{selectedOrder.taxAmount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between text-lg font-bold pt-2 border-t border-gray-300">
                       <span>รวมทั้งหมด</span>
                       <span className="text-blue-600">฿{selectedOrder.totalAmount.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
               </div>
+
+              {selectedOrder.notes && (
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">หมายเหตุ</h3>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">{selectedOrder.notes}</p>
+                </div>
+              )}
 
               {/* Close Button */}
               <button

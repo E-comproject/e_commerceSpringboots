@@ -12,8 +12,11 @@ import org.springframework.web.bind.annotation.*;
 import com.ecommerce.EcommerceApplication.config.OmiseConfig;
 import com.ecommerce.EcommerceApplication.dto.OmiseCreateChargeReq;
 import com.ecommerce.EcommerceApplication.dto.OmiseWebhookEvent;
+import com.ecommerce.EcommerceApplication.dto.CreatePaymentReq;
+import com.ecommerce.EcommerceApplication.dto.PaymentDto;
 import com.ecommerce.EcommerceApplication.service.OmisePaymentGatewayService;
 import com.ecommerce.EcommerceApplication.service.PaymentService;
+import com.ecommerce.EcommerceApplication.entity.Payment.PaymentMethod;
 
 import com.ecommerce.EcommerceApplication.model.omise.OmiseCharge;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -106,8 +109,10 @@ public class OmiseController {
                         String methodName = req.paymentMethod.name();
                         req.bankCode = methodName.substring(methodName.lastIndexOf("_") + 1).toLowerCase();
                     }
+                    // Set return URI to redirect back after payment
+                    String returnUri = "http://localhost:3000/payment/callback?order_id=" + req.orderId;
                     charge = omisePaymentGatewayService.createInternetBankingCharge(
-                        req.amount, req.currency, description, req.bankCode, metadata
+                        req.amount, req.currency, description, req.bankCode, returnUri, metadata
                     );
                     break;
 
@@ -116,6 +121,34 @@ public class OmiseController {
             }
 
             if (charge != null) {
+                // Create Payment record in database
+                try {
+                    CreatePaymentReq paymentReq = new CreatePaymentReq();
+                    paymentReq.orderId = req.orderId;
+                    paymentReq.paymentMethod = req.paymentMethod;
+                    paymentReq.amount = omisePaymentGatewayService.convertFromOmiseAmount(charge.getAmount());
+                    paymentReq.currency = charge.getCurrency();
+
+                    PaymentDto payment = paymentService.createPayment(paymentReq);
+
+                    // Save Omise charge ID to payment record (for webhook lookup)
+                    paymentService.completePayment(payment.id, charge.getId());
+                    logger.info("✅ Created payment {} for order {} with Omise charge ID: {}",
+                               payment.id, req.orderId, charge.getId());
+
+                    // If charge is already paid (e.g., credit card), mark payment as completed
+                    if (charge.getPaid() != null && charge.getPaid()) {
+                        logger.info("💰 Charge {} is already paid, updating payment status", charge.getId());
+                        paymentService.updatePaymentStatus(payment.id,
+                            com.ecommerce.EcommerceApplication.entity.Payment.PaymentStatus.COMPLETED,
+                            "Paid immediately via " + req.paymentMethod);
+                    }
+
+                } catch (Exception e) {
+                    logger.error("❌ Failed to create payment record for Omise charge: {}", charge.getId(), e);
+                    // Continue even if payment record creation fails
+                }
+
                 Map<String, Object> response = new HashMap<>();
                 response.put("id", charge.getId());
                 response.put("status", charge.getStatus());
@@ -161,12 +194,29 @@ public class OmiseController {
     }
 
     /**
-     * Get charge status
+     * Get charge status and sync payment record
      */
     @GetMapping("/charges/{chargeId}")
     public ResponseEntity<?> getCharge(@PathVariable String chargeId) {
         try {
             OmiseCharge charge = omisePaymentGatewayService.getCharge(chargeId);
+
+            // Try to sync payment status with our database
+            try {
+                PaymentDto payment = paymentService.getPaymentByGatewayTransactionId(chargeId);
+
+                // If Omise says paid but our DB says pending, update it
+                if (charge.getPaid() != null && charge.getPaid() &&
+                    "PENDING".equals(payment.statusDisplayName)) {
+
+                    logger.info("🔄 Syncing payment {} status: Omise is paid, updating our DB", payment.id);
+                    paymentService.updatePaymentStatus(payment.id,
+                        com.ecommerce.EcommerceApplication.entity.Payment.PaymentStatus.COMPLETED,
+                        "Payment confirmed via Omise charge check");
+                }
+            } catch (IllegalArgumentException e) {
+                logger.debug("No payment record found for charge {}, skipping sync", chargeId);
+            }
 
             Map<String, Object> response = new HashMap<>();
             response.put("id", charge.getId());
@@ -296,28 +346,45 @@ public class OmiseController {
      */
     private void updatePaymentStatusFromOmise(String omiseChargeId, String status, String reason) {
         try {
-            // For now, we'll search for payment by transaction_id that matches the omise charge ID
-            // In a real implementation, you should store the omise charge ID when creating the payment
-
-            logger.info("Attempting to update payment status for Omise charge: {} to status: {}",
+            logger.info("🔍 Attempting to update payment status for Omise charge: {} to status: {}",
                        omiseChargeId, status);
 
-            // Note: This is a simplified approach
-            // In production, you should have a mapping between your payment ID and Omise charge ID
+            // Find payment by gateway transaction ID (Omise charge ID)
+            try {
+                PaymentDto payment = paymentService.getPaymentByGatewayTransactionId(omiseChargeId);
 
-            // For testing purposes, we'll just log the action
-            logger.info("Payment status updated: Omise Charge {} -> Status: {} ({})",
-                       omiseChargeId, status, reason);
+                logger.info("✅ Found payment {} for Omise charge {}, updating status to {}",
+                           payment.id, omiseChargeId, status);
 
-            // TODO: Implement actual payment status update logic
-            // Example:
-            // Payment payment = paymentService.findByTransactionId(omiseChargeId);
-            // if (payment != null) {
-            //     paymentService.updatePaymentStatus(payment.getId(), PaymentStatus.valueOf(status), reason);
-            // }
+                // Map webhook status to our PaymentStatus enum
+                com.ecommerce.EcommerceApplication.entity.Payment.PaymentStatus paymentStatus;
+                switch (status.toUpperCase()) {
+                    case "COMPLETED":
+                        paymentStatus = com.ecommerce.EcommerceApplication.entity.Payment.PaymentStatus.COMPLETED;
+                        break;
+                    case "FAILED":
+                        paymentStatus = com.ecommerce.EcommerceApplication.entity.Payment.PaymentStatus.FAILED;
+                        break;
+                    case "EXPIRED":
+                        paymentStatus = com.ecommerce.EcommerceApplication.entity.Payment.PaymentStatus.CANCELLED;
+                        break;
+                    case "PROCESSING":
+                        paymentStatus = com.ecommerce.EcommerceApplication.entity.Payment.PaymentStatus.PROCESSING;
+                        break;
+                    default:
+                        logger.warn("⚠️ Unknown payment status: {}, skipping update", status);
+                        return;
+                }
+
+                paymentService.updatePaymentStatus(payment.id, paymentStatus, reason);
+                logger.info("💰 Payment {} status updated successfully via webhook", payment.id);
+
+            } catch (IllegalArgumentException e) {
+                logger.warn("⚠️ No payment found for Omise charge: {} (may be created without payment record)", omiseChargeId);
+            }
 
         } catch (Exception e) {
-            logger.error("Failed to update payment status for Omise charge: {}", omiseChargeId, e);
+            logger.error("❌ Failed to update payment status for Omise charge: {}", omiseChargeId, e);
         }
     }
 }

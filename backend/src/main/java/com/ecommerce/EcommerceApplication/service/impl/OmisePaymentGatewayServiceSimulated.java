@@ -146,6 +146,11 @@ public class OmisePaymentGatewayServiceSimulated implements OmisePaymentGatewayS
 
     @Override
     public OmiseCharge createInternetBankingCharge(BigDecimal amount, String currency, String description, String bankCode, Map<String, String> metadata) {
+        return createInternetBankingCharge(amount, currency, description, bankCode, null, metadata);
+    }
+
+    @Override
+    public OmiseCharge createInternetBankingCharge(BigDecimal amount, String currency, String description, String bankCode, String returnUri, Map<String, String> metadata) {
         logger.info("Creating simulated Internet Banking charge for amount: {} {} with bank: {}", amount, currency, bankCode);
 
         OmiseCharge charge = new OmiseCharge();
@@ -160,7 +165,14 @@ public class OmisePaymentGatewayServiceSimulated implements OmisePaymentGatewayS
         // Internet banking requires redirect
         charge.setStatus("pending");
         charge.setPaid(false);
-        charge.setAuthorizeUri("https://demo-bank.com/payment?ref=" + charge.getId());
+
+        // Build authorize URI - redirect to our demo bank page
+        String authorizeUri = "http://localhost:3000/demo-bank?ref=" + charge.getId();
+        if (returnUri != null && !returnUri.isEmpty()) {
+            authorizeUri += "&return_uri=" + java.net.URLEncoder.encode(returnUri, java.nio.charset.StandardCharsets.UTF_8);
+            logger.info("✅ Internet Banking charge will redirect back to: {}", returnUri);
+        }
+        charge.setAuthorizeUri(authorizeUri);
 
         // Create mock source
         OmiseCharge.OmiseSource source = new OmiseCharge.OmiseSource();

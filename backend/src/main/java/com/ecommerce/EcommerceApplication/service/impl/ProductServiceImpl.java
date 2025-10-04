@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ecommerce.EcommerceApplication.dto.CreateProductRequest;
 import com.ecommerce.EcommerceApplication.dto.ProductDto;
 import com.ecommerce.EcommerceApplication.dto.ProductImageDto;
 import com.ecommerce.EcommerceApplication.dto.ProductVariantDto;
@@ -62,6 +63,49 @@ public class ProductServiceImpl implements ProductService {
                 imgs.add(im);
             }
             p.setImages(imgs);
+        }
+
+        repo.save(p);
+        return toDto(p);
+    }
+
+    @Override
+    public ProductDto createProduct(Long shopId, CreateProductRequest req) {
+        // Validate required fields
+        if (req.name == null || req.name.isBlank()) {
+            throw new IllegalArgumentException("Product name is required");
+        }
+        if (req.price == null || req.price.signum() <= 0) {
+            throw new IllegalArgumentException("Product price must be greater than 0");
+        }
+
+        Product p = new Product();
+        p.setShopId(shopId);
+        p.setCategoryId(req.categoryId);
+        p.setName(req.name);
+        p.setDescription(req.description);
+        p.setPrice(req.price);
+        p.setComparePrice(req.comparePrice);
+        p.setSku(req.sku);
+        p.setStockQuantity(req.stockQuantity != null ? req.stockQuantity : 0);
+        p.setWeightGram(req.weightGram);
+        p.setStatus(req.status != null && !req.status.isBlank() ? req.status : "active");
+
+        // Generate unique slug from name
+        String baseSlug = slugify(req.name);
+        p.setSlug(uniqueSlug(baseSlug));
+
+        // Add images if provided
+        if (req.imageUrls != null && !req.imageUrls.isEmpty()) {
+            List<ProductImage> images = new ArrayList<>();
+            for (int i = 0; i < req.imageUrls.size(); i++) {
+                ProductImage img = new ProductImage();
+                img.setProduct(p);
+                img.setUrl(req.imageUrls.get(i));
+                img.setSortOrder(i);
+                images.add(img);
+            }
+            p.setImages(images);
         }
 
         repo.save(p);
@@ -172,6 +216,12 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public java.util.List<ProductDto> getByShopId(Long shopId) {
+        return repo.findByShopId(shopId).stream().map(this::toDto).toList();
+    }
+
+    @Override
     public ProductDto toDto(Product p) {
         return toDtoFull(p);
     }
@@ -183,10 +233,22 @@ public class ProductServiceImpl implements ProductService {
                 .replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
         String slug = normalized.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9-]", "");
         slug = slug.replaceAll("-{2,}", "-");
-        return slug.replaceAll("^-|-$", "");
+        slug = slug.replaceAll("^-|-$", "");
+
+        // If slug is empty (e.g., Thai characters), generate a fallback slug
+        if (slug.isEmpty()) {
+            slug = "product-" + System.currentTimeMillis();
+        }
+
+        return slug;
     }
 
     private String uniqueSlug(String base) {
+        // Ensure base is not empty
+        if (base == null || base.isEmpty()) {
+            base = "product-" + System.currentTimeMillis();
+        }
+
         String s = base;
         int i = 2;
         while (repo.existsBySlug(s)) {

@@ -136,9 +136,14 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    public CartItem updateItem(Long itemId, int quantity) {
+    public CartItem updateItem(Long cartId, Long itemId, int quantity) {
         CartItem item = cartItemRepository.findById(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("Cart item not found"));
+
+        // Security check: verify the item belongs to the specified cart
+        if (!item.getCart().getId().equals(cartId)) {
+            throw new IllegalArgumentException("Cart item does not belong to the specified cart");
+        }
 
         if (quantity <= 0) {
             cartItemRepository.delete(item);

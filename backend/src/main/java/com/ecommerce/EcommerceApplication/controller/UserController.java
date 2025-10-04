@@ -19,21 +19,40 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/me")
-    public Map<String, Object> me(@AuthenticationPrincipal Long userId) {
+    public ResponseEntity<?> me(@AuthenticationPrincipal Long userId) {
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
         User u = userService.getMe(userId);
-        return Map.of(
+        return ResponseEntity.ok(Map.of(
                 "id", u.getId(),
                 "username", u.getUsername(),
-                "email", u.getEmail(),
-                "role", u.getRole()
-        );
+                "email", u.getEmail() != null ? u.getEmail() : "",
+                "role", u.getRole(),
+                "firstName", u.getFirstName() != null ? u.getFirstName() : "",
+                "lastName", u.getLastName() != null ? u.getLastName() : "",
+                "phone", u.getPhone() != null ? u.getPhone() : "",
+                "profileImage", u.getProfileImage() != null ? u.getProfileImage() : ""
+        ));
     }
 
     @PutMapping("/me")
     public ResponseEntity<?> updateMe(@AuthenticationPrincipal Long userId,
                                       @RequestBody UpdateMeRequest req) {
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
         var u = userService.updateUsername(userId, req);
-        return ResponseEntity.ok(Map.of("message", "updated", "username", u.getUsername()));
+        return ResponseEntity.ok(Map.of(
+                "id", u.getId(),
+                "username", u.getUsername(),
+                "email", u.getEmail() != null ? u.getEmail() : "",
+                "role", u.getRole(),
+                "firstName", u.getFirstName() != null ? u.getFirstName() : "",
+                "lastName", u.getLastName() != null ? u.getLastName() : "",
+                "phone", u.getPhone() != null ? u.getPhone() : "",
+                "profileImage", u.getProfileImage() != null ? u.getProfileImage() : ""
+        ));
     }
 
     @PutMapping("/me/password")

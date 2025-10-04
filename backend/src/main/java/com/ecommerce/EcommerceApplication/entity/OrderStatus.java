@@ -68,8 +68,8 @@ public enum OrderStatus {
     static {
         Map<OrderStatus, Set<OrderStatus>> transitions = new HashMap<>();
 
-        // From PENDING
-        transitions.put(PENDING, Set.of(PAYMENT_PENDING, PAID, CANCELLED, ON_HOLD));
+        // From PENDING (allow CONFIRMED for COD/direct confirmation)
+        transitions.put(PENDING, Set.of(PAYMENT_PENDING, PAID, CONFIRMED, CANCELLED, ON_HOLD));
 
         // From PAYMENT_PENDING
         transitions.put(PAYMENT_PENDING, Set.of(PAID, PAYMENT_FAILED, CANCELLED));

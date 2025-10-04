@@ -28,6 +28,11 @@ public interface OmisePaymentGatewayService {
     OmiseCharge createInternetBankingCharge(BigDecimal amount, String currency, String description, String bankCode, Map<String, String> metadata);
 
     /**
+     * Create a charge with Internet Banking with return URL
+     */
+    OmiseCharge createInternetBankingCharge(BigDecimal amount, String currency, String description, String bankCode, String returnUri, Map<String, String> metadata);
+
+    /**
      * Retrieve a charge by ID
      */
     OmiseCharge getCharge(String chargeId);

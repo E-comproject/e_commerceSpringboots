@@ -109,6 +109,14 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(readOnly = true)
+    public PaymentDto getPaymentByGatewayTransactionId(String gatewayTransactionId) {
+        Payment payment = paymentRepository.findByGatewayTransactionId(gatewayTransactionId)
+            .orElseThrow(() -> new IllegalArgumentException("Payment not found for transaction: " + gatewayTransactionId));
+        return mapToDto(payment);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<PaymentDto> getPaymentsByOrderId(Long orderId) {
         return paymentRepository.findByOrderIdOrderByCreatedAtDesc(orderId)
             .stream()

@@ -18,6 +18,7 @@ import com.ecommerce.EcommerceApplication.entity.Product;
 public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findBySlug(String slug);
     boolean existsBySlug(String slug);
+    java.util.List<Product> findByShopId(Long shopId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Product p WHERE p.id = :id")

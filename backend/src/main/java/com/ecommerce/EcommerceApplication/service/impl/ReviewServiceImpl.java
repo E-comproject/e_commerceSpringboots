@@ -5,9 +5,11 @@ import com.ecommerce.EcommerceApplication.dto.ReviewDto;
 import com.ecommerce.EcommerceApplication.entity.Product;
 import com.ecommerce.EcommerceApplication.entity.Review;
 import com.ecommerce.EcommerceApplication.exception.ReviewAlreadyExistsException;
+import com.ecommerce.EcommerceApplication.model.User;
 import com.ecommerce.EcommerceApplication.repository.OrderItemRepository;
 import com.ecommerce.EcommerceApplication.repository.ProductRepository;
 import com.ecommerce.EcommerceApplication.repository.ReviewRepository;
+import com.ecommerce.EcommerceApplication.repository.UserRepository;
 import com.ecommerce.EcommerceApplication.service.ReviewService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,14 +31,17 @@ public class ReviewServiceImpl implements ReviewService {
     private final ReviewRepository reviewRepo;
     private final ProductRepository productRepo;
     private final OrderItemRepository orderItemRepo;
+    private final UserRepository userRepo;
     private final ObjectMapper om = new ObjectMapper();
 
     public ReviewServiceImpl(ReviewRepository reviewRepo,
                              ProductRepository productRepo,
-                             OrderItemRepository orderItemRepo) {
+                             OrderItemRepository orderItemRepo,
+                             UserRepository userRepo) {
         this.reviewRepo = reviewRepo;
         this.productRepo = productRepo;
         this.orderItemRepo = orderItemRepo;
+        this.userRepo = userRepo;
     }
 
     @Override
@@ -122,6 +127,13 @@ public class ReviewServiceImpl implements ReviewService {
         return toDto(review);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ReviewDto> listByShop(Long shopId, Pageable pageable) {
+        return reviewRepo.findByShopId(shopId, pageable)
+                .map(this::toDto);
+    }
+
     // ---------- helpers ----------
     private void refreshProductRating(Long productId) {
         Double avg = reviewRepo.avgRatingByProduct(productId);
@@ -137,7 +149,21 @@ public class ReviewServiceImpl implements ReviewService {
         ReviewDto dto = new ReviewDto();
         dto.id = review.getId();
         dto.productId = review.getProduct() == null ? null : review.getProduct().getId();
+
+        // Add product name
+        if (review.getProduct() != null) {
+            dto.productName = review.getProduct().getName();
+        }
+
         dto.userId = review.getUserId();
+
+        // Add user name
+        if (review.getUserId() != null) {
+            userRepo.findById(review.getUserId()).ifPresent(user -> {
+                dto.userName = user.getUsername();
+            });
+        }
+
         dto.orderItemId = review.getOrderItemId();
         dto.rating = review.getRating();
         dto.title = review.getTitle();

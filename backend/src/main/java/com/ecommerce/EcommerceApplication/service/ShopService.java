@@ -82,6 +82,13 @@ public class ShopService {
                 .orElseThrow(() -> new IllegalArgumentException("shop not found"));
     }
 
+    @Transactional(readOnly = true)
+    public ShopResponse getByOwnerId(Long ownerId) {
+        return shopRepo.findByOwnerId(ownerId)
+                .map(this::toDto)
+                .orElse(null);  // Return null if seller doesn't have a shop yet
+    }
+
     @Transactional
     public ShopResponse update(Long actorId, Long shopId, ShopUpdateRequest req, boolean actorIsAdmin) {
         Shop s = shopRepo.findById(shopId)

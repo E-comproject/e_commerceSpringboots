@@ -16,6 +16,16 @@ api.interceptors.request.use(
       const token = localStorage.getItem('accessToken');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        // Log token usage for debugging (only for specific endpoints to reduce noise)
+        if (config.url?.includes('/orders') || config.url?.includes('/users/me') || config.url?.includes('/payments')) {
+          console.log(`📤 [API] ${config.method?.toUpperCase()} ${config.url}`);
+          console.log(`🔑 [API] Using token (first 30 chars): ${token.substring(0, 30)}...`);
+        }
+      } else {
+        // Log when no token is available
+        if (config.url?.includes('/orders') || config.url?.includes('/payments')) {
+          console.warn(`⚠️ [API] No access token found for ${config.method?.toUpperCase()} ${config.url}`);
+        }
       }
     }
     return config;

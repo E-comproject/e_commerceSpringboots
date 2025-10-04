@@ -31,18 +31,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchUser = async () => {
     try {
       const token = authService.getAccessToken();
-      console.log('🔑 Access token:', token ? 'exists' : 'missing');
+      console.log('🔑 [AuthContext] Access token (first 50 chars):', token ? token.substring(0, 50) + '...' : 'missing');
+      console.log('🔑 [AuthContext] Full token length:', token ? token.length : 0);
 
       if (authService.isAuthenticated()) {
-        console.log('📡 Fetching user from /me...');
-        const response = await api.get<User>('/me');
-        console.log('✅ User fetched:', response.data);
+        console.log('📡 [AuthContext] Fetching user from /users/me...');
+        const response = await api.get<User>('/users/me');
+        console.log('✅ [AuthContext] User fetched successfully:');
+        console.log('   - User ID:', response.data.id);
+        console.log('   - Username:', response.data.username);
+        console.log('   - Email:', response.data.email);
+        console.log('   - Role:', response.data.role);
         setUser(response.data);
       } else {
-        console.log('❌ Not authenticated');
+        console.log('❌ [AuthContext] Not authenticated - no token');
+        setUser(null);
       }
-    } catch (error) {
-      console.error('❌ Failed to fetch user:', error);
+    } catch (error: any) {
+      console.error('❌ [AuthContext] Failed to fetch user:', error);
+      console.error('   - Error details:', error.response?.data);
+      console.error('   - Error status:', error.response?.status);
       // If token is invalid, clear it
       authService.logout();
       setUser(null);
@@ -53,11 +61,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchUser();
+
+    // Listen for localStorage changes from other tabs/windows
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'accessToken' && e.oldValue !== e.newValue) {
+        console.warn('⚠️ [AuthContext] Token changed in another tab/window!');
+        console.log('   - Old token (first 20 chars):', e.oldValue ? e.oldValue.substring(0, 20) + '...' : 'null');
+        console.log('   - New token (first 20 chars):', e.newValue ? e.newValue.substring(0, 20) + '...' : 'null');
+
+        // Token changed (login/logout in another tab) - reload user
+        if (e.newValue) {
+          console.log('🔄 [AuthContext] New login detected, refreshing user data...');
+          fetchUser();
+        } else {
+          console.log('🚪 [AuthContext] Logout detected, clearing user data...');
+          setUser(null);
+          window.location.href = '/login';
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const login = async (email: string, password: string) => {
-    await authService.login({ email, password });
+    console.log('🔐 Attempting login...');
+    const result = await authService.login({ email, password });
+    console.log('✅ Login API success, tokens saved');
+    console.log('📡 Fetching user data...');
     await fetchUser();
+    console.log('✅ User data loaded, login complete');
   };
 
   const logout = () => {

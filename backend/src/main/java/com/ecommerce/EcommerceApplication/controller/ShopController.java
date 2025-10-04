@@ -4,7 +4,6 @@ import com.ecommerce.EcommerceApplication.dto.ShopCreateRequest;
 import com.ecommerce.EcommerceApplication.dto.ShopResponse;
 import com.ecommerce.EcommerceApplication.dto.ShopUpdateRequest;
 import com.ecommerce.EcommerceApplication.service.ShopService;
-import com.ecommerce.EcommerceApplication.util.AuthUtils;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,11 +17,9 @@ import java.util.Map;
 public class ShopController {
 
     private final ShopService shopService;
-    private final AuthUtils authUtils;
 
-    public ShopController(ShopService shopService, AuthUtils authUtils) {
+    public ShopController(ShopService shopService) {
         this.shopService = shopService;
-        this.authUtils = authUtils;
     }
 
     // Public
@@ -40,21 +37,25 @@ public class ShopController {
     // Seller creates own shop (ควบคุม 1 ผู้ขาย 1 ร้าน ใน service)
     @PreAuthorize("hasRole('SELLER')")
     @PostMapping("/seller/shops")
-    public ResponseEntity<ShopResponse> create(
-            @AuthenticationPrincipal String username,
+    public ResponseEntity<?> create(
+            @AuthenticationPrincipal Long userId,
             @Valid @RequestBody ShopCreateRequest req) {
-        Long userId = authUtils.getUserIdFromUsername(username);
+        if (userId == null) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
         return ResponseEntity.ok(shopService.create(userId, req));
     }
 
     // Seller/Admin updates
     @PreAuthorize("hasAnyRole('SELLER','ADMIN')")
     @PutMapping("/seller/shops/{id}")
-    public ResponseEntity<ShopResponse> update(
-            @AuthenticationPrincipal String username,
+    public ResponseEntity<?> update(
+            @AuthenticationPrincipal Long userId,
             @PathVariable Long id,
             @RequestBody ShopUpdateRequest req) {
-        Long userId = authUtils.getUserIdFromUsername(username);
+        if (userId == null) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
         boolean isAdmin = false; // ให้ service ตัดสินใจเพิ่มได้ภายหลังถ้าต้อง
         return ResponseEntity.ok(shopService.update(userId, id, req, isAdmin));
     }

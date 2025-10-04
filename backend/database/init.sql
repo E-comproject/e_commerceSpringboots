@@ -205,20 +205,7 @@ CREATE TABLE reviews (
 );
 
 -- 🏷️ DISCOUNT COUPONS (Optional but useful)
-CREATE TABLE coupons (
-  id BIGSERIAL PRIMARY KEY,
-  code TEXT UNIQUE NOT NULL,
-  name TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('percentage', 'fixed_amount')),
-  value NUMERIC(12,2) NOT NULL,
-  minimum_amount NUMERIC(12,2) DEFAULT 0,
-  usage_limit INTEGER,
-  used_count INTEGER DEFAULT 0,
-  starts_at TIMESTAMPTZ,
-  expires_at TIMESTAMPTZ,
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+
 
 -- 📊 INDEXES FOR PERFORMANCE
 CREATE INDEX idx_products_shop_id ON products(shop_id);

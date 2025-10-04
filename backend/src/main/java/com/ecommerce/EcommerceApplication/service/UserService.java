@@ -35,7 +35,7 @@ public class UserService {
         u.setUsername(req.getUsername());
         u.setEmail(req.getEmail());
         u.setPassword(passwordEncoder.encode(req.getPassword()));
-        if (u.getRole() == null) u.setRole("USER");            
+        if (u.getRole() == null) u.setRole("ROLE_USER");
         userRepo.save(u);
     }
 
@@ -56,14 +56,39 @@ public class UserService {
     }
 
     public User updateUsername(Long userId, UpdateMeRequest req) {
-        if (req.getUsername() == null || req.getUsername().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "username is required");
-        }
-        if (userRepo.existsByUsername(req.getUsername())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "username already taken");
-        }
         User u = userRepo.findById(userId).orElseThrow();
-        u.setUsername(req.getUsername());
+
+        // Update username if provided
+        if (req.getUsername() != null && !req.getUsername().isBlank()) {
+            if (!req.getUsername().equals(u.getUsername()) && userRepo.existsByUsername(req.getUsername())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "username already taken");
+            }
+            u.setUsername(req.getUsername());
+        }
+
+        // Update email if provided
+        if (req.getEmail() != null && !req.getEmail().isBlank()) {
+            if (!req.getEmail().equals(u.getEmail()) && userRepo.existsByEmail(req.getEmail())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "email already used");
+            }
+            u.setEmail(req.getEmail());
+        }
+
+        // Update firstName if provided
+        if (req.getFirstName() != null) {
+            u.setFirstName(req.getFirstName());
+        }
+
+        // Update lastName if provided
+        if (req.getLastName() != null) {
+            u.setLastName(req.getLastName());
+        }
+
+        // Update phone if provided
+        if (req.getPhone() != null) {
+            u.setPhone(req.getPhone());
+        }
+
         return userRepo.save(u);
     }
 

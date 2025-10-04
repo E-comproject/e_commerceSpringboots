@@ -10,4 +10,7 @@ public interface ReviewService {
     ReviewDto create(Long userId, ReviewCreateReq req);
     Page<ReviewDto> listByProduct(Long productId, Pageable pageable);
     ReviewDto addShopReply(Long reviewId, Long shopId, String replyText);   // ร้านค้าตอบกลับรีวิว
+
+    // For Seller: Get reviews by shop
+    Page<ReviewDto> listByShop(Long shopId, Pageable pageable);
 }

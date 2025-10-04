@@ -50,6 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             if (tokenProvider.validateToken(token)) {
+                Long userId = tokenProvider.getUserId(token);
                 String username = tokenProvider.getUsername(token);
                 List<String> roles = tokenProvider.getRoles(token);
 
@@ -58,10 +59,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .map(SimpleGrantedAuthority::new)
                         .toList();
 
-                System.out.println("DEBUG JWT: username=" + username + ", roles=" + roles + ", authorities=" + authorities);
+                System.out.println("DEBUG JWT: userId=" + userId + ", username=" + username + ", roles=" + roles);
 
+                // Set userId as principal (instead of username) so @AuthenticationPrincipal Long userId works
                 var authentication =
-                        new UsernamePasswordAuthenticationToken(username, null, authorities);
+                        new UsernamePasswordAuthenticationToken(userId, null, authorities);
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }

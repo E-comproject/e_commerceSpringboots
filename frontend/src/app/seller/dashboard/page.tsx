@@ -29,8 +29,9 @@ interface DashboardStats {
 
 interface RecentOrder {
   id: number;
-  customerName: string;
-  total: number;
+  orderNumber: string;
+  userName: string;
+  totalAmount: number;
   status: string;
   createdAt: string;
 }
@@ -59,31 +60,48 @@ export default function SellerDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+
       // Fetch products
       const productsRes = await api.get(`/products?shopId=${shop?.id}`);
       const products = productsRes.data;
 
-      // Fetch orders (mock for now - adjust endpoint as needed)
-      // const ordersRes = await api.get(`/seller/orders`);
-      // const orders = ordersRes.data;
+      // Fetch all orders for the shop
+      const ordersRes = await api.get('/orders/seller/my-shop-orders', {
+        params: { page: 0, size: 100 } // Get first 100 orders
+      });
+      const ordersData = ordersRes.data;
+      const allOrders = ordersData.content || [];
 
-      // Calculate stats (using mock data for demonstration)
+      // Calculate total revenue
+      const totalRevenue = allOrders.reduce((sum: number, order: any) => {
+        return sum + (order.totalAmount || 0);
+      }, 0);
+
+      // Count orders by status
+      const pendingOrders = allOrders.filter((o: any) => o.status === 'PENDING').length;
+      const completedOrders = allOrders.filter((o: any) => o.status === 'COMPLETED').length;
+
+      // Calculate stats
       setStats({
         totalProducts: products.length || 0,
-        totalOrders: 42, // Mock data
-        totalRevenue: 125430, // Mock data
-        averageRating: 4.5, // Mock data
-        pendingOrders: 8, // Mock data
-        completedOrders: 34, // Mock data
+        totalOrders: allOrders.length,
+        totalRevenue: totalRevenue,
+        averageRating: 4.5, // TODO: Calculate from reviews when review API is ready
+        pendingOrders: pendingOrders,
+        completedOrders: completedOrders,
         lowStockProducts: products.filter((p: any) => p.stockQuantity < 10).length,
       });
 
-      // Set recent orders (mock data)
-      setRecentOrders([
-        { id: 1, customerName: 'สมชาย ใจดี', total: 1250, status: 'PENDING', createdAt: '2024-01-15' },
-        { id: 2, customerName: 'สมหญิง จันทร์เพ็ญ', total: 3450, status: 'COMPLETED', createdAt: '2024-01-14' },
-        { id: 3, customerName: 'วิชัย สมหวัง', total: 890, status: 'PROCESSING', createdAt: '2024-01-14' },
-      ]);
+      // Set recent orders (first 3)
+      const recent = allOrders.slice(0, 3).map((order: any) => ({
+        id: order.id,
+        orderNumber: order.orderNumber,
+        userName: order.userName,
+        totalAmount: order.totalAmount,
+        status: order.status,
+        createdAt: order.createdAt,
+      }));
+      setRecentOrders(recent);
 
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -260,34 +278,47 @@ export default function SellerDashboard() {
               </div>
 
               <div className="space-y-4">
-                {recentOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="flex items-center justify-between p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100"
-                  >
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">{order.customerName}</p>
-                      <p className="text-sm text-gray-500">
-                        #{order.id} · {new Date(order.createdAt).toLocaleDateString('th-TH')}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900">฿{order.total.toLocaleString()}</p>
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                          order.status === 'COMPLETED'
-                            ? 'bg-green-100 text-green-800'
-                            : order.status === 'PENDING'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-blue-100 text-blue-800'
-                        }`}
-                      >
-                        {order.status === 'COMPLETED' ? 'เสร็จสิ้น' :
-                         order.status === 'PENDING' ? 'รอดำเนินการ' : 'กำลังจัดส่ง'}
-                      </span>
-                    </div>
+                {recentOrders.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>ยังไม่มีคำสั่งซื้อ</p>
                   </div>
-                ))}
+                ) : (
+                  recentOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="flex items-center justify-between p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100 cursor-pointer"
+                      onClick={() => router.push('/seller/order')}
+                    >
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900">{order.userName}</p>
+                        <p className="text-sm text-gray-500">
+                          {order.orderNumber} · {new Date(order.createdAt).toLocaleDateString('th-TH')}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-900">฿{order.totalAmount.toLocaleString()}</p>
+                        <span
+                          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                            order.status === 'COMPLETED'
+                              ? 'bg-green-100 text-green-800'
+                              : order.status === 'PENDING'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : order.status === 'PROCESSING'
+                              ? 'bg-blue-100 text-blue-800'
+                              : order.status === 'SHIPPED'
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {order.status === 'COMPLETED' ? 'เสร็จสิ้น' :
+                           order.status === 'PENDING' ? 'รอดำเนินการ' :
+                           order.status === 'PROCESSING' ? 'กำลังเตรียม' :
+                           order.status === 'SHIPPED' ? 'กำลังจัดส่ง' : order.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 

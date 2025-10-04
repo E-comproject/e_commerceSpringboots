@@ -26,8 +26,18 @@ export const authService = {
   },
 
   async login(data: LoginData): Promise<LoginResponse> {
+    // Clear any existing tokens first to prevent token mixing
+    if (typeof window !== 'undefined') {
+      console.log('🧹 Clearing old tokens before login...');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+    }
+
     const response = await api.post<LoginResponse>('/auth/login', data);
     const { accessToken, refreshToken } = response.data;
+
+    console.log('💾 Storing new tokens...');
+    console.log('🔑 New access token (first 20 chars):', accessToken.substring(0, 20) + '...');
 
     // Store tokens in localStorage
     if (typeof window !== 'undefined') {

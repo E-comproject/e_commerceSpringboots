@@ -35,6 +35,11 @@ public interface PaymentService {
     PaymentDto getPaymentByNumber(String paymentNumber);
 
     /**
+     * Get payment by gateway transaction ID (Omise charge ID)
+     */
+    PaymentDto getPaymentByGatewayTransactionId(String gatewayTransactionId);
+
+    /**
      * Get payments for a specific order
      */
     List<PaymentDto> getPaymentsByOrderId(Long orderId);

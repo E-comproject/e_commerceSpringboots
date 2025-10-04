@@ -28,6 +28,8 @@ interface Review {
   comment?: string;
   createdAt: string;
   helpful?: number;
+  shopReply?: string;
+  repliedAt?: string;
 }
 
 export default function ReviewsPage() {
@@ -39,6 +41,8 @@ export default function ReviewsPage() {
   const [ratingFilter, setRatingFilter] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
     if (!shopLoading && shop) {
@@ -49,82 +53,63 @@ export default function ReviewsPage() {
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      // Mock data for now - replace with actual API call
-      const mockReviews: Review[] = [
-        {
-          id: 1,
-          userId: 1,
-          userName: 'สมชาย ใจดี',
-          productId: 1,
-          productName: 'เสื้อยืดสีขาว ไซส์ M',
-          rating: 5,
-          comment: 'สินค้าคุณภาพดี ส่งเร็ว ใส่สบาย แนะนำเลยค่ะ มาซื้อครั้งที่ 3 แล้ว',
-          createdAt: '2024-01-15T10:30:00',
-          helpful: 12,
-        },
-        {
-          id: 2,
-          userId: 2,
-          userName: 'สมหญิง จันทร์เพ็ญ',
-          productId: 2,
-          productName: 'กางเกงยีนส์ ขายาว',
-          rating: 4,
-          comment: 'สินค้าดีครับ แต่มาช้าไปหน่อย ผ้าเนื้อดีครับ ใส่แล้วดูดี',
-          createdAt: '2024-01-14T15:20:00',
-          helpful: 8,
-        },
-        {
-          id: 3,
-          userId: 3,
-          userName: 'วิชัย สมหวัง',
-          productId: 3,
-          productName: 'รองเท้าผ้าใบ ไซส์ 39',
-          rating: 5,
-          comment: 'รองเท้าสวยมาก ใส่สบาย น้ำหนักเบา เดินไม่เมื่อย ถูกใจมากๆ',
-          createdAt: '2024-01-13T09:15:00',
-          helpful: 15,
-        },
-        {
-          id: 4,
-          userId: 4,
-          userName: 'สุภาพร ศรีสุข',
-          productId: 1,
-          productName: 'เสื้อยืดสีขาว ไซส์ M',
-          rating: 3,
-          comment: 'สินค้าโอเคครับ แต่สีไม่ตรงรูป',
-          createdAt: '2024-01-12T14:45:00',
-          helpful: 3,
-        },
-        {
-          id: 5,
-          userId: 5,
-          userName: 'ประยุทธ์ มานะดี',
-          productId: 4,
-          productName: 'รองเท้าแตะหนัง ไซส์ 39',
-          rating: 5,
-          comment: 'พอใจครับ หนังแท้ งานดี คุณภาพดีมากๆ จ่อซื้ออีก ติดใจมากๆ',
-          createdAt: '2024-01-11T11:20:00',
-          helpful: 20,
-        },
-        {
-          id: 6,
-          userId: 6,
-          userName: 'อุบล สุขใจ',
-          productId: 2,
-          productName: 'กางเกงยีนส์ ขายาว',
-          rating: 2,
-          comment: 'คุณภาพไม่ค่อยดี ซักครั้งแรกก็ขาดแล้ว',
-          createdAt: '2024-01-10T16:30:00',
-          helpful: 2,
-        },
-      ];
+      setError('');
 
-      setReviews(mockReviews);
-    } catch (error) {
+      const response = await api.get('/reviews/seller/my-shop-reviews', {
+        params: { page: 0, size: 100 } // Get first 100 reviews
+      });
+
+      const data = response.data;
+      const reviewsData = data.content || [];
+
+      setReviews(reviewsData);
+    } catch (error: any) {
       console.error('Failed to fetch reviews:', error);
-      setError('ไม่สามารถโหลดข้อมูลรีวิวได้');
+      const errorData = error.response?.data;
+
+      let errorMessage = 'ไม่สามารถโหลดข้อมูลรีวิวได้';
+      if (typeof errorData === 'string') {
+        errorMessage = errorData;
+      } else if (errorData?.message) {
+        errorMessage = errorData.message;
+      } else if (errorData?.error) {
+        errorMessage = errorData.error;
+      }
+
+      if (error.response?.status === 400 && errorMessage.includes('does not have a shop')) {
+        setError('คุณยังไม่มีร้านค้า กรุณาสร้างร้านค้าก่อน');
+        router.push('/seller/create-shop');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReply = async (reviewId: number) => {
+    if (!shop) return;
+    if (!replyText.trim()) {
+      setError('กรุณาใส่ข้อความตอบกลับ');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+
+    try {
+      await api.post(`/reviews/${reviewId}/reply`, replyText, {
+        params: { shopId: shop.id },
+        headers: { 'Content-Type': 'text/plain' }
+      });
+
+      setSuccess('ตอบกลับรีวิวสำเร็จ');
+      setReplyingTo(null);
+      setReplyText('');
+      fetchReviews();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error: any) {
+      console.error('Failed to reply:', error);
+      setError(error.response?.data || 'ไม่สามารถตอบกลับได้');
+      setTimeout(() => setError(''), 5000);
     }
   };
 
@@ -333,14 +318,83 @@ export default function ReviewsPage() {
                       </div>
                     )}
 
+                    {/* Shop Reply */}
+                    {review.shopReply && (
+                      <div className="ml-16 mb-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                            {shop?.name?.[0] || 'S'}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <p className="font-semibold text-blue-900">{shop?.name || 'ร้านค้า'}</p>
+                              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">ตอบกลับจากร้านค้า</span>
+                            </div>
+                            <p className="text-gray-700 text-sm leading-relaxed">{review.shopReply}</p>
+                            {review.repliedAt && (
+                              <p className="text-xs text-gray-500 mt-2">
+                                <Calendar className="h-3 w-3 inline mr-1" />
+                                {new Date(review.repliedAt).toLocaleDateString('th-TH')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reply Form */}
+                    {replyingTo === review.id && (
+                      <div className="ml-16 mb-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <textarea
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          placeholder="เขียนคำตอบของคุณ..."
+                          rows={4}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                        />
+                        <div className="flex gap-2 mt-3">
+                          <button
+                            onClick={() => handleReply(review.id)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                          >
+                            ส่งคำตอบ
+                          </button>
+                          <button
+                            onClick={() => {
+                              setReplyingTo(null);
+                              setReplyText('');
+                            }}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
+                          >
+                            ยกเลิก
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="ml-16 flex items-center gap-4">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <ThumbsUp className="h-4 w-4" />
-                        <span>{review.helpful} คนเห็นว่ามีประโยชน์</span>
+                        <span>{review.helpful || 0} คนเห็นว่ามีประโยชน์</span>
                       </div>
-                      <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                        ตอบกลับ
-                      </button>
+                      {!review.shopReply && (
+                        <button
+                          onClick={() => {
+                            setReplyingTo(review.id);
+                            setReplyText('');
+                          }}
+                          className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          ตอบกลับ
+                        </button>
+                      )}
+                      {review.shopReply && (
+                        <span className="text-sm text-green-600 font-medium flex items-center gap-1">
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          ตอบกลับแล้ว
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}

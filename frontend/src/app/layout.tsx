@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google'
 import '@/styles/globals/globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import Navigation from '@/components/Navigation'
+import OmiseScript from '@/components/OmiseScript'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -21,6 +22,7 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <AuthProvider>
+          <OmiseScript />
           <Navigation />
           {children}
         </AuthProvider>

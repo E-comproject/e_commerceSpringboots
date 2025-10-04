@@ -6,7 +6,9 @@ import java.util.List;
 public class ReviewDto {
     public Long id;
     public Long productId;
+    public String productName;    // For seller to see product name
     public Long userId;
+    public String userName;        // For seller to see customer name
     public Long orderItemId;
     public Integer rating;
     public String title;

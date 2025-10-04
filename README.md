@@ -146,7 +146,7 @@ backend/
 ### Environment Profiles
 
 #### Development (dev)
-- ใช้ฐานข้อมูล `ecommerce_dev`
+- ใช้ฐานข้อมูล `99`
 - `ddl-auto=create-drop` (ลบและสร้างตารางใหม่ทุกครั้ง)
 - แสดง SQL logs
 - Debug logging

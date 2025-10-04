@@ -5,7 +5,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,7 +23,6 @@ import com.ecommerce.EcommerceApplication.dto.CartItemDto;
 import com.ecommerce.EcommerceApplication.entity.Cart;
 import com.ecommerce.EcommerceApplication.entity.CartItem;
 import com.ecommerce.EcommerceApplication.service.CartService;
-import com.ecommerce.EcommerceApplication.util.AuthUtils;
 
 @RestController
 @RequestMapping("/cart")
@@ -31,29 +30,27 @@ import com.ecommerce.EcommerceApplication.util.AuthUtils;
 public class CartController {
 
     private final CartService cartService;
-    private final AuthUtils authUtils;
 
-    public CartController(CartService cartService, AuthUtils authUtils) {
+    public CartController(CartService cartService) {
         this.cartService = cartService;
-        this.authUtils = authUtils;
-    }
-
-    private Long getUserId(Authentication auth) {
-        return authUtils.getUserIdFromUsername(auth.getName());
     }
 
     // ดึง userId จาก JWT Authentication
     @GetMapping
-    public ResponseEntity<CartDto> getOrCreate(Authentication auth) {
-        Long userId = getUserId(auth);
+    public ResponseEntity<CartDto> getOrCreate(@AuthenticationPrincipal Long userId) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         Cart cart = cartService.getOrCreateCart(userId);
         return ResponseEntity.ok(toDto(cart, cartService.listItems(cart.getId())));
     }
 
     // ดึงรายการในตะกร้า (ใช้ userId จาก JWT)
     @GetMapping("/items")
-    public ResponseEntity<CartDto> listItems(Authentication auth) {
-        Long userId = getUserId(auth);
+    public ResponseEntity<CartDto> listItems(@AuthenticationPrincipal Long userId) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         Cart cart = cartService.getOrCreateCart(userId);
         List<CartItem> items = cartService.listItems(cart.getId());
         return ResponseEntity.ok(toDto(cart, items));
@@ -61,14 +58,17 @@ public class CartController {
 
     // เพิ่มสินค้าเข้าตะกร้า (รองรับทั้ง product และ variant)
     @PostMapping("/items")
-    public ResponseEntity<CartDto> addItem(Authentication auth,
+    public ResponseEntity<CartDto> addItem(@AuthenticationPrincipal Long userId,
                                          @RequestBody AddToCartReq request) {
         try {
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
             if (!request.isValid()) {
                 return ResponseEntity.badRequest().build();
             }
 
-            Long userId = getUserId(auth);
             Cart cart = cartService.getOrCreateCart(userId);
 
             CartItem addedItem;
@@ -93,11 +93,14 @@ public class CartController {
 
     // เพิ่มสินค้าแบบเดิม (backward compatibility)
     @PostMapping("/items/simple")
-    public ResponseEntity<CartDto> addItemSimple(Authentication auth,
+    public ResponseEntity<CartDto> addItemSimple(@AuthenticationPrincipal Long userId,
                                                @RequestParam Long productId,
                                                @RequestParam int quantity) {
         try {
-            Long userId = getUserId(auth);
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
             Cart cart = cartService.getOrCreateCart(userId);
 
             cartService.addItem(cart.getId(), productId, quantity);
@@ -112,23 +115,35 @@ public class CartController {
 
     // เปลี่ยนจำนวน (ถ้า <= 0 จะลบ และส่ง 204)
     @PutMapping("/items/{itemId}")
-    public ResponseEntity<?> updateItem(Authentication auth,
+    public ResponseEntity<?> updateItem(@AuthenticationPrincipal Long userId,
                                     @PathVariable Long itemId,
-                                    @RequestParam int quantity) {
-        Long userId = getUserId(auth);
+                                    @RequestBody UpdateCartItemRequest request) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         Cart cart = cartService.getOrCreateCart(userId);
 
-        var updated = cartService.updateItem(itemId, quantity);
-        if (updated == null) return ResponseEntity.noContent().build();
+        try {
+            var updated = cartService.updateItem(cart.getId(), itemId, request.quantity);
+            if (updated == null) return ResponseEntity.noContent().build();
 
-        List<CartItem> items = cartService.listItems(cart.getId());
-        return ResponseEntity.ok(toDto(cart, items));
+            List<CartItem> items = cartService.listItems(cart.getId());
+            return ResponseEntity.ok(toDto(cart, items));
+        } catch (IllegalArgumentException e) {
+            // Item doesn't belong to user's cart
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Forbidden: " + e.getMessage());
+        }
     }
 
     // ลบ item (ตรวจสอบว่าเป็นของ user คนนี้)
     @DeleteMapping("/items/{itemId}")
-    public ResponseEntity<Void> removeItem(Authentication auth, @PathVariable Long itemId) {
-        Long userId = getUserId(auth);
+    public ResponseEntity<Void> removeItem(@AuthenticationPrincipal Long userId, @PathVariable Long itemId) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         Cart cart = cartService.getOrCreateCart(userId);
 
         return cartService.removeItem(cart.getId(), itemId)
@@ -137,14 +152,22 @@ public class CartController {
     }
 
     // ล้างทั้งตะกร้า
-    @DeleteMapping("/items")
-    public ResponseEntity<Void> clear(Authentication auth) {
-        Long userId = getUserId(auth);
+    @DeleteMapping
+    public ResponseEntity<Void> clear(@AuthenticationPrincipal Long userId) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         Cart cart = cartService.getOrCreateCart(userId);
 
         return cartService.clearCart(cart.getId())
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.badRequest().build();
+    }
+
+    // DTO for update request
+    public static class UpdateCartItemRequest {
+        public int quantity;
     }
 
     // ---------------- Mapping helpers ----------------
@@ -167,6 +190,7 @@ public class CartController {
     private CartItemDto toItemDto(CartItem e) {
         CartItemDto d = new CartItemDto();
         d.id = e.getId();
+
         // ใช้ shadow id ให้แน่ใจว่ามีค่า แม้ relation ยัง LAZY
         d.productId = e.getProductId() != null
                 ? e.getProductId()
@@ -180,15 +204,38 @@ public class CartController {
                 ? BigDecimal.ZERO
                 : e.getPriceSnapshot().multiply(BigDecimal.valueOf(e.getQuantity()));
 
+        // Add product image (prefer variant image if exists, otherwise product image)
+        if (e.hasVariant() && e.getVariant() != null && !e.getVariant().getImages().isEmpty()) {
+            d.productImage = e.getVariant().getImages().get(0).getImageUrl();
+        } else if (e.getProduct() != null && !e.getProduct().getImages().isEmpty()) {
+            d.productImage = e.getProduct().getImages().get(0).getUrl();  // ProductImage uses getUrl()
+        }
+
+        // Add stock information
+        if (e.hasVariant() && e.getVariant() != null) {
+            d.stock = e.getVariant().getStockQuantity();
+        } else if (e.getProduct() != null) {
+            d.stock = e.getProduct().getStockQuantity();
+        }
+
         // Add variant information if exists
         if (e.hasVariant()) {
             d.variantId = e.getVariantId();
             d.variantSku = e.getVariant() != null ? e.getVariant().getSku() : null;
             d.variantTitle = e.getVariant() != null ? e.getVariant().getDisplayName() : null;
+            d.variantOptions = e.getVariant() != null ? e.getVariant().getVariantOptions() : null;
             d.productName = e.getDisplayName(); // This will include variant info
             d.effectiveSku = e.getEffectiveSku(); // Variant SKU if available
         } else {
             d.effectiveSku = d.productSku;
+        }
+
+        // Add shop information
+        if (e.getProduct() != null) {
+            d.shopId = e.getProduct().getShopId();
+            if (e.getProduct().getShop() != null) {
+                d.shopName = e.getProduct().getShop().getName();
+            }
         }
 
         return d;

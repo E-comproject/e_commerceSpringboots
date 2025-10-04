@@ -7,6 +7,8 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,11 +20,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.ecommerce.EcommerceApplication.dto.CreateProductRequest;
 import com.ecommerce.EcommerceApplication.dto.ProductDto;
 import com.ecommerce.EcommerceApplication.dto.ProductImageDto;
+import com.ecommerce.EcommerceApplication.dto.ShopResponse;
 import com.ecommerce.EcommerceApplication.entity.Product;
 import com.ecommerce.EcommerceApplication.repository.ProductRepository;
 import com.ecommerce.EcommerceApplication.service.ProductService;
+import com.ecommerce.EcommerceApplication.service.ShopService;
 
 @RestController
 @RequestMapping("/products")
@@ -31,16 +36,26 @@ public class ProductController {
 
     private final ProductRepository productRepository;
     private final ProductService productService;
+    private final ShopService shopService;
 
-    public ProductController(ProductRepository productRepository, ProductService productService) {
+    public ProductController(ProductRepository productRepository, ProductService productService,
+                            ShopService shopService) {
         this.productRepository = productRepository;
         this.productService = productService;
+        this.shopService = shopService;
     }
 
     @GetMapping
-    public ResponseEntity<?> getAllProducts() {
+    public ResponseEntity<?> getAllProducts(@RequestParam(required = false) Long shopId) {
         try {
-            List<ProductDto> products = productService.getAllProducts();
+            List<ProductDto> products;
+            if (shopId != null) {
+                // Filter by shop for seller
+                products = productService.getByShopId(shopId);
+            } else {
+                // Get all active products for public
+                products = productService.getAllProducts();
+            }
             return ResponseEntity.ok(products);
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Error: " + e.getMessage());
@@ -77,27 +92,103 @@ public class ProductController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('SELLER', 'ADMIN')")
-    public ResponseEntity<ProductDto> createProduct(@RequestBody Product product) {
-        Product saved = productRepository.save(product);
-        return ResponseEntity
-                .created(URI.create("/products/" + saved.getId()))
-                .body(productService.toDto(saved));
+    public ResponseEntity<?> createProduct(
+            @AuthenticationPrincipal Long userId,
+            @RequestBody CreateProductRequest request) {
+        try {
+            if (userId == null) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+
+            // Get seller's shop
+            ShopResponse shop = shopService.getByOwnerId(userId);
+            if (shop == null) {
+                return ResponseEntity.badRequest()
+                    .body("Seller does not have a shop. Please create a shop first.");
+            }
+
+            // Create product
+            ProductDto product = productService.createProduct(shop.getId(), request);
+            return ResponseEntity
+                    .created(URI.create("/products/" + product.id))
+                    .body(product);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body("Failed to create product: " + e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('SELLER', 'ADMIN')")
-    public ResponseEntity<ProductDto> updateProduct(@PathVariable Long id, @RequestBody Product product) {
-        return productService.updateProduct(id, product)
-                .map(updated -> ResponseEntity.ok(productService.toDto(updated)))
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> updateProduct(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long id,
+            @RequestBody Product product) {
+        try {
+            if (userId == null) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+
+            // Get the existing product to verify ownership
+            ProductDto existingProduct = productService.getById(id);
+
+            // Get seller's shop
+            ShopResponse shop = shopService.getByOwnerId(userId);
+            if (shop == null) {
+                return ResponseEntity.status(403).body("Forbidden: Seller does not have a shop");
+            }
+
+            // Verify the product belongs to seller's shop
+            if (!existingProduct.shopId.equals(shop.getId())) {
+                return ResponseEntity.status(403)
+                    .body("Forbidden: You can only edit products from your own shop");
+            }
+
+            return productService.updateProduct(id, product)
+                    .map(updated -> ResponseEntity.ok(productService.toDto(updated)))
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('SELLER', 'ADMIN')")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
-        return productService.deleteProduct(id)
-                ? ResponseEntity.noContent().build()
-                : ResponseEntity.notFound().build();
+    public ResponseEntity<?> deleteProduct(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long id) {
+        try {
+            if (userId == null) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+
+            // Get the existing product to verify ownership
+            ProductDto existingProduct = productService.getById(id);
+
+            // Get seller's shop
+            ShopResponse shop = shopService.getByOwnerId(userId);
+            if (shop == null) {
+                return ResponseEntity.status(403).body("Forbidden: Seller does not have a shop");
+            }
+
+            // Verify the product belongs to seller's shop
+            if (!existingProduct.shopId.equals(shop.getId())) {
+                return ResponseEntity.status(403)
+                    .body("Forbidden: You can only delete products from your own shop");
+            }
+
+            return productService.deleteProduct(id)
+                    ? ResponseEntity.noContent().build()
+                    : ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        }
     }
 
 }
