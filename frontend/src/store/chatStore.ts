@@ -8,7 +8,7 @@ import { StompSubscription } from '@stomp/stompjs';
 
 interface ChatState {
   // Current state
-  currentUser: { id: number; role: 'BUYER' | 'SELLER' } | null;
+  currentUser: { id: number; role: 'BUYER' | 'SELLER'; shopId?: number } | null;
   activeRoomId: number | null;
   rooms: ChatRoomWithLastMessage[];
   messages: Record<number, ChatMessage[]>; // roomId -> messages[]
@@ -22,7 +22,7 @@ interface ChatState {
   roomSubscription: StompSubscription | null;
 
   // Actions
-  setCurrentUser: (user: { id: number; role: 'BUYER' | 'SELLER' }) => void;
+  setCurrentUser: (user: { id: number; role: 'BUYER' | 'SELLER'; shopId?: number }) => void;
   setActiveRoom: (roomId: number | null) => void;
   loadRooms: () => Promise<void>;
   loadMessages: (roomId: number) => Promise<void>;
@@ -80,7 +80,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (currentUser.role === 'BUYER') {
         roomsResponse = await chatApi.getRoomsForBuyer(currentUser.id);
       } else {
-        roomsResponse = await chatApi.getRoomsForSeller(currentUser.id);
+        // For seller, use shopId
+        if (!currentUser.shopId) {
+          console.error('Seller has no shopId');
+          set({ isLoadingRooms: false });
+          return;
+        }
+        roomsResponse = await chatApi.getRoomsForSeller(currentUser.shopId);
       }
 
       // Transform rooms to include last message info (would need backend enhancement)
@@ -120,11 +126,33 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   // Send a message
   sendMessage: async (roomId, content, attachments = []) => {
-    const { currentUser } = get();
-    if (!currentUser) return;
+    const { currentUser, addMessage } = get();
+    if (!currentUser) {
+      console.error('No current user');
+      return;
+    }
 
     const webSocketService = getChatWebSocketService();
-    if (!webSocketService) return;
+    if (!webSocketService) {
+      console.error('WebSocket service not available');
+      return;
+    }
+
+    console.log('Sending message:', { roomId, content, userId: currentUser.id, role: currentUser.role });
+
+    // Optimistic update - add message immediately to UI with temp ID
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage: ChatMessage = {
+      id: tempId as any, // Temporary ID with prefix
+      roomId,
+      senderUserId: currentUser.id,
+      senderRole: currentUser.role,
+      content,
+      attachments: attachments || [],
+      createdAt: new Date().toISOString(),
+      isRead: false,
+    };
+    addMessage(optimisticMessage);
 
     const success = webSocketService.sendMessage({
       roomId,
@@ -135,7 +163,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
 
     if (!success) {
-      console.error('Failed to send message');
+      console.error('Failed to send message via WebSocket');
+    } else {
+      console.log('Message sent successfully via WebSocket');
     }
   },
 
@@ -157,16 +187,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
   addMessage: (message) => {
     set(state => {
       const roomMessages = state.messages[message.roomId] || [];
+
       // Check if message already exists to prevent duplicates
       const messageExists = roomMessages.some(m => m.id === message.id);
       if (messageExists) {
         return state; // Don't add duplicate message
       }
 
+      // Remove optimistic messages (temp-*) when real message arrives
+      // Match by content and sender to identify the optimistic message
+      const filteredMessages = roomMessages.filter(m => {
+        const isTempMessage = typeof m.id === 'string' && m.id.toString().startsWith('temp-');
+        if (isTempMessage) {
+          // Remove if content and sender match (this is the real version)
+          const isMatch = m.content === message.content &&
+                         m.senderUserId === message.senderUserId;
+          return !isMatch;
+        }
+        return true;
+      });
+
       return {
         messages: {
           ...state.messages,
-          [message.roomId]: [...roomMessages, message]
+          [message.roomId]: [...filteredMessages, message]
         }
       };
     });

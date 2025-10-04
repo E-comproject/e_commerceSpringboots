@@ -16,6 +16,7 @@ import {
   Eye
 } from 'lucide-react';
 import api from '@/lib/api';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, BarChart, Bar } from 'recharts';
 
 interface DashboardStats {
   totalProducts: number;
@@ -25,6 +26,9 @@ interface DashboardStats {
   pendingOrders: number;
   completedOrders: number;
   lowStockProducts: number;
+  productsTrend?: { direction: 'up' | 'down', value: string };
+  ordersTrend?: { direction: 'up' | 'down', value: string };
+  revenueTrend?: { direction: 'up' | 'down', value: string };
 }
 
 interface RecentOrder {
@@ -34,6 +38,21 @@ interface RecentOrder {
   totalAmount: number;
   status: string;
   createdAt: string;
+}
+
+interface DailyRevenue {
+  date: string;
+  revenue: number;
+}
+
+interface DailyOrders {
+  date: string;
+  orders: number;
+}
+
+interface RatingDistribution {
+  rating: string;
+  count: number;
 }
 
 export default function SellerDashboard() {
@@ -47,8 +66,14 @@ export default function SellerDashboard() {
     pendingOrders: 0,
     completedOrders: 0,
     lowStockProducts: 0,
+    productsTrend: { direction: 'up', value: '+0%' },
+    ordersTrend: { direction: 'up', value: '+0%' },
+    revenueTrend: { direction: 'up', value: '+0%' },
   });
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  const [dailyRevenue, setDailyRevenue] = useState<DailyRevenue[]>([]);
+  const [dailyOrders, setDailyOrders] = useState<DailyOrders[]>([]);
+  const [ratingDistribution, setRatingDistribution] = useState<RatingDistribution[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -72,24 +97,116 @@ export default function SellerDashboard() {
       const ordersData = ordersRes.data;
       const allOrders = ordersData.content || [];
 
-      // Calculate total revenue
-      const totalRevenue = allOrders.reduce((sum: number, order: any) => {
+      // Calculate total revenue from COMPLETED orders ONLY
+      const completedOrdersList = allOrders.filter((o: any) => o.status === 'COMPLETED');
+      const totalRevenue = completedOrdersList.reduce((sum: number, order: any) => {
         return sum + (order.totalAmount || 0);
       }, 0);
 
       // Count orders by status
       const pendingOrders = allOrders.filter((o: any) => o.status === 'PENDING').length;
-      const completedOrders = allOrders.filter((o: any) => o.status === 'COMPLETED').length;
+      const completedOrders = completedOrdersList.length;
+
+      // Calculate trends - compare this month vs last month
+      const now = new Date();
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+      // Products created this month vs last month (if products have createdAt)
+      const thisMonthProducts = products.filter((p: any) => {
+        if (!p.createdAt) return false;
+        const createdDate = new Date(p.createdAt);
+        return createdDate >= thisMonthStart;
+      }).length;
+      const lastMonthProducts = products.filter((p: any) => {
+        if (!p.createdAt) return false;
+        const createdDate = new Date(p.createdAt);
+        return createdDate >= lastMonthStart && createdDate <= lastMonthEnd;
+      }).length;
+      const productsChange = lastMonthProducts > 0
+        ? ((thisMonthProducts - lastMonthProducts) / lastMonthProducts * 100)
+        : (thisMonthProducts > 0 ? 100 : 0);
+
+      // Orders this month vs last month
+      const thisMonthOrders = allOrders.filter((o: any) => {
+        const orderDate = new Date(o.createdAt);
+        return orderDate >= thisMonthStart;
+      }).length;
+      const lastMonthOrders = allOrders.filter((o: any) => {
+        const orderDate = new Date(o.createdAt);
+        return orderDate >= lastMonthStart && orderDate <= lastMonthEnd;
+      }).length;
+      const ordersChange = lastMonthOrders > 0
+        ? ((thisMonthOrders - lastMonthOrders) / lastMonthOrders * 100)
+        : (thisMonthOrders > 0 ? 100 : 0);
+
+      // Revenue this month vs last month (from COMPLETED orders)
+      const thisMonthRevenue = completedOrdersList.filter((o: any) => {
+        const orderDate = new Date(o.createdAt);
+        return orderDate >= thisMonthStart;
+      }).reduce((sum: number, o: any) => sum + (o.totalAmount || 0), 0);
+      const lastMonthRevenue = completedOrdersList.filter((o: any) => {
+        const orderDate = new Date(o.createdAt);
+        return orderDate >= lastMonthStart && orderDate <= lastMonthEnd;
+      }).reduce((sum: number, o: any) => sum + (o.totalAmount || 0), 0);
+      const revenueChange = lastMonthRevenue > 0
+        ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue * 100)
+        : (thisMonthRevenue > 0 ? 100 : 0);
+
+      // Fetch reviews for all shop products to calculate average rating and distribution
+      let averageRating = 0;
+      const ratingCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+      if (products.length > 0) {
+        const reviewsRes = await api.get('/reviews/seller/my-shop-reviews', {
+          params: { shopId: shop?.id, page: 0, size: 1000 }
+        });
+        const reviews = reviewsRes.data.content || [];
+        if (reviews.length > 0) {
+          const totalRating = reviews.reduce((sum: number, review: any) => sum + review.rating, 0);
+          averageRating = totalRating / reviews.length;
+
+          // Count reviews by rating
+          reviews.forEach((review: any) => {
+            if (review.rating >= 1 && review.rating <= 5) {
+              ratingCounts[review.rating as keyof typeof ratingCounts]++;
+            }
+          });
+        }
+      }
+
+      // Convert rating counts to array for chart
+      const ratingData: RatingDistribution[] = [
+        { rating: '1 ดาว', count: ratingCounts[1] },
+        { rating: '2 ดาว', count: ratingCounts[2] },
+        { rating: '3 ดาว', count: ratingCounts[3] },
+        { rating: '4 ดาว', count: ratingCounts[4] },
+        { rating: '5 ดาว', count: ratingCounts[5] },
+      ];
+      setRatingDistribution(ratingData);
 
       // Calculate stats
       setStats({
         totalProducts: products.length || 0,
         totalOrders: allOrders.length,
         totalRevenue: totalRevenue,
-        averageRating: 4.5, // TODO: Calculate from reviews when review API is ready
+        averageRating: averageRating,
         pendingOrders: pendingOrders,
         completedOrders: completedOrders,
         lowStockProducts: products.filter((p: any) => p.stockQuantity < 10).length,
+        productsTrend: {
+          direction: productsChange >= 0 ? 'up' : 'down',
+          value: `${productsChange >= 0 ? '+' : ''}${productsChange.toFixed(1)}%`
+        },
+        ordersTrend: {
+          direction: ordersChange >= 0 ? 'up' : 'down',
+          value: `${ordersChange >= 0 ? '+' : ''}${ordersChange.toFixed(1)}%`
+        },
+        revenueTrend: {
+          direction: revenueChange >= 0 ? 'up' : 'down',
+          value: `${revenueChange >= 0 ? '+' : ''}${revenueChange.toFixed(1)}%`
+        }
       });
 
       // Set recent orders (first 3)
@@ -102,6 +219,51 @@ export default function SellerDashboard() {
         createdAt: order.createdAt,
       }));
       setRecentOrders(recent);
+
+      // Calculate daily revenue and orders for the last 30 days
+      const revenueMap = new Map<string, number>();
+      const ordersMap = new Map<string, number>();
+      const today = new Date();
+
+      // Initialize last 30 days with 0 revenue and 0 orders
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
+        revenueMap.set(dateStr, 0);
+        ordersMap.set(dateStr, 0);
+      }
+
+      // Sum revenue by date from COMPLETED orders only
+      completedOrdersList.forEach((order: any) => {
+        const orderDate = new Date(order.createdAt);
+        const dateStr = orderDate.toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
+        if (revenueMap.has(dateStr)) {
+          revenueMap.set(dateStr, (revenueMap.get(dateStr) || 0) + order.totalAmount);
+        }
+      });
+
+      // Count all orders by date (including all statuses)
+      allOrders.forEach((order: any) => {
+        const orderDate = new Date(order.createdAt);
+        const dateStr = orderDate.toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
+        if (ordersMap.has(dateStr)) {
+          ordersMap.set(dateStr, (ordersMap.get(dateStr) || 0) + 1);
+        }
+      });
+
+      // Convert to arrays for charts
+      const revenueData: DailyRevenue[] = Array.from(revenueMap.entries()).map(([date, revenue]) => ({
+        date,
+        revenue
+      }));
+      setDailyRevenue(revenueData);
+
+      const dailyOrdersData: DailyOrders[] = Array.from(ordersMap.entries()).map(([date, orders]) => ({
+        date,
+        orders
+      }));
+      setDailyOrders(dailyOrdersData);
 
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -196,24 +358,24 @@ export default function SellerDashboard() {
               value={stats.totalProducts}
               icon={Package}
               color="blue"
-              trend="up"
-              trendValue="+12%"
+              trend={stats.productsTrend?.direction}
+              trendValue={stats.productsTrend?.value}
             />
             <StatCard
               title="คำสั่งซื้อ"
               value={stats.totalOrders}
               icon={ShoppingBag}
               color="green"
-              trend="up"
-              trendValue="+8%"
+              trend={stats.ordersTrend?.direction}
+              trendValue={stats.ordersTrend?.value}
             />
             <StatCard
               title="รายได้ทั้งหมด"
               value={`฿${stats.totalRevenue.toLocaleString()}`}
               icon={DollarSign}
               color="purple"
-              trend="up"
-              trendValue="+23%"
+              trend={stats.revenueTrend?.direction}
+              trendValue={stats.revenueTrend?.value}
             />
             <StatCard
               title="คะแนนเฉลี่ย"
@@ -221,6 +383,137 @@ export default function SellerDashboard() {
               icon={Star}
               color="yellow"
             />
+          </div>
+
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Revenue Chart */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-900">รายได้ 30 วันย้อนหลัง</h2>
+                <p className="text-sm text-gray-500 mt-1">รายได้จากคำสั่งซื้อที่เสร็จสิ้นแล้ว</p>
+              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={dailyRevenue}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    tickFormatter={(value) => `฿${(value / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                    }}
+                    formatter={(value: number) => [`฿${value.toLocaleString()}`, 'รายได้']}
+                    labelStyle={{ color: '#374151', fontWeight: 'bold' }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Orders Chart */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-900">คำสั่งซื้อ 30 วันย้อนหลัง</h2>
+                <p className="text-sm text-gray-500 mt-1">จำนวนคำสั่งซื้อทั้งหมดแต่ละวัน</p>
+              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={dailyOrders}>
+                  <defs>
+                    <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                    }}
+                    formatter={(value: number) => [`${value} คำสั่งซื้อ`, 'จำนวน']}
+                    labelStyle={{ color: '#374151', fontWeight: 'bold' }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="orders"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorOrders)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Rating Distribution Chart */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-gray-900">การกระจายคะแนนรีวิว</h2>
+              <p className="text-sm text-gray-500 mt-1">จำนวนรีวิวแต่ละระดับคะแนน</p>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={ratingDistribution}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="rating"
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                />
+                <YAxis
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                  }}
+                  formatter={(value: number) => [`${value} รีวิว`, 'จำนวน']}
+                  labelStyle={{ color: '#374151', fontWeight: 'bold' }}
+                />
+                <Bar
+                  dataKey="count"
+                  fill="#f59e0b"
+                  radius={[8, 8, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
           {/* Quick Stats Row */}

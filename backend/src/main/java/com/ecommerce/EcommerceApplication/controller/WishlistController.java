@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ecommerce.EcommerceApplication.dto.WishlistDto;
 import com.ecommerce.EcommerceApplication.service.WishlistService;
-import com.ecommerce.EcommerceApplication.util.AuthUtils;
 
 import java.util.Map;
 
@@ -26,15 +25,14 @@ import java.util.Map;
 public class WishlistController {
 
     private final WishlistService wishlistService;
-    private final AuthUtils authUtils;
 
-    public WishlistController(WishlistService wishlistService, AuthUtils authUtils) {
+    public WishlistController(WishlistService wishlistService) {
         this.wishlistService = wishlistService;
-        this.authUtils = authUtils;
     }
 
     private Long getUserId(Authentication auth) {
-        return authUtils.getUserIdFromUsername(auth.getName());
+        // JWT filter sets userId as principal (not username)
+        return (Long) auth.getPrincipal();
     }
 
     // เพิ่มสินค้าเข้า wishlist (ใช้ userId จาก JWT)

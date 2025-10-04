@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api';
 import ReviewModal from '@/components/ReviewModal';
+import { useChatStore } from '@/store/chatStore';
 import {
   CheckCircle,
   Package,
@@ -17,6 +18,7 @@ import {
   ShoppingBag,
   AlertCircle,
   Star,
+  MessageCircle,
 } from 'lucide-react';
 
 interface OrderItem {
@@ -64,7 +66,8 @@ export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated, authLoading } = useAuth();
+  const { user, isAuthenticated, authLoading } = useAuth();
+  const { createOrGetRoom } = useChatStore();
 
   const orderId = params.id as string;
   const isSuccess = searchParams.get('success') === 'true';
@@ -74,6 +77,7 @@ export default function OrderDetailPage() {
   const [error, setError] = useState('');
   const [reviewingProduct, setReviewingProduct] = useState<{ id: number; name: string } | null>(null);
   const [reviewedProducts, setReviewedProducts] = useState<Set<number>>(new Set());
+  const [shopId, setShopId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -109,11 +113,42 @@ export default function OrderDetailPage() {
       setLoading(true);
       const response = await api.get(`/orders/${orderId}`);
       setOrder(response.data);
+
+      // Fetch shopId from first product
+      if (response.data.items && response.data.items.length > 0) {
+        const firstProductId = response.data.items[0].productId;
+        try {
+          const productRes = await api.get(`/products/${firstProductId}`);
+          setShopId(productRes.data.shopId);
+        } catch (error) {
+          console.error('Failed to fetch product for shopId:', error);
+        }
+      }
     } catch (err: any) {
       console.error('Failed to fetch order:', err);
       setError('ไม่สามารถโหลดข้อมูลคำสั่งซื้อได้');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleChatAboutOrder = async () => {
+    if (!user || !shopId || !order) {
+      if (!user) {
+        router.push('/login');
+      }
+      return;
+    }
+
+    try {
+      // Create or get chat room with shop for this specific order
+      const room = await createOrGetRoom(user.id, shopId, order.id);
+
+      // Navigate to chat page with room ID
+      router.push(`/chat?roomId=${room.id}`);
+    } catch (error) {
+      console.error('Failed to create chat room:', error);
+      alert('ไม่สามารถเปิดแชทได้ กรุณาลองใหม่อีกครั้ง');
     }
   };
 
@@ -383,19 +418,32 @@ export default function OrderDetailPage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-4">
-            <button
-              onClick={() => router.push('/products')}
-              className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
-            >
-              เลือกซื้อสินค้าต่อ
-            </button>
-            <button
-              onClick={() => router.push('/orders')}
-              className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-            >
-              ดูคำสั่งซื้อทั้งหมด
-            </button>
+          <div className="space-y-3">
+            {/* Chat Button */}
+            {shopId && (
+              <button
+                onClick={handleChatAboutOrder}
+                className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition font-medium flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="h-5 w-5" />
+                แชทเกี่ยวกับออเดอร์นี้
+              </button>
+            )}
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => router.push('/products')}
+                className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
+              >
+                เลือกซื้อสินค้าต่อ
+              </button>
+              <button
+                onClick={() => router.push('/orders')}
+                className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+              >
+                ดูคำสั่งซื้อทั้งหมด
+              </button>
+            </div>
           </div>
         </div>
       </div>

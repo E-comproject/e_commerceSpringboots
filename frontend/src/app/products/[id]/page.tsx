@@ -21,9 +21,13 @@ import {
   MapPin,
   MessageSquare,
   User,
-  Calendar
+  Calendar,
+  MessageCircle
 } from 'lucide-react';
 import api from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { useChatStore } from '@/store/chatStore';
+import WishlistButton from '@/components/WishlistButton';
 
 interface Review {
   id: number;
@@ -78,6 +82,8 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const productId = params.id as string;
+  const { user } = useAuth();
+  const { createOrGetRoom } = useChatStore();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [shop, setShop] = useState<Shop | null>(null);
@@ -337,6 +343,26 @@ export default function ProductDetailPage() {
       } else {
         alert(error.response?.data?.message || 'ไม่สามารถเพิ่มสินค้าลงตะกร้าได้');
       }
+    }
+  };
+
+  const handleChatWithShop = async () => {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    if (!product?.shopId) return;
+
+    try {
+      // Create or get chat room with shop (no orderId for general chat)
+      const room = await createOrGetRoom(user.id, product.shopId);
+
+      // Navigate to chat page with room ID
+      router.push(`/chat?roomId=${room.id}`);
+    } catch (error) {
+      console.error('Failed to create chat room:', error);
+      alert('ไม่สามารถเปิดแชทได้ กรุณาลองใหม่อีกครั้ง');
     }
   };
 
@@ -688,20 +714,29 @@ export default function ProductDetailPage() {
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                <button
+                  onClick={handleAddToCart}
+                  disabled={currentStock === 0}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  เพิ่มลงตะกร้า
+                </button>
+                <div className="flex items-center">
+                  <WishlistButton productId={product.id} size="lg" />
+                </div>
+                <button className="p-3 border border-gray-300 rounded-xl hover:bg-gray-50">
+                  <Share2 className="h-5 w-5" />
+                </button>
+              </div>
               <button
-                onClick={handleAddToCart}
-                disabled={currentStock === 0}
-                className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                onClick={handleChatWithShop}
+                className="w-full bg-white border-2 border-blue-600 text-blue-600 py-3 rounded-xl font-medium hover:bg-blue-50 transition flex items-center justify-center gap-2"
               >
-                <ShoppingCart className="h-5 w-5" />
-                เพิ่มลงตะกร้า
-              </button>
-              <button className="p-3 border border-gray-300 rounded-xl hover:bg-gray-50">
-                <Heart className="h-5 w-5" />
-              </button>
-              <button className="p-3 border border-gray-300 rounded-xl hover:bg-gray-50">
-                <Share2 className="h-5 w-5" />
+                <MessageCircle className="h-5 w-5" />
+                แชทกับร้านค้า
               </button>
             </div>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, X } from 'lucide-react';
 import { ATTRIBUTE_LABELS, getAttributeOptions } from '@/config/variantTemplates';
 
@@ -32,9 +32,28 @@ export default function VariantManager({
   initialVariants = []
 }: VariantManagerProps) {
   const [variants, setVariants] = useState<Variant[]>(initialVariants);
-  const [selectedAttributes, setSelectedAttributes] = useState<string[]>(['color', 'size']);
+  const [selectedAttributes, setSelectedAttributes] = useState<string[]>([]);
   const [showAddAttribute, setShowAddAttribute] = useState(false);
   const [customAttribute, setCustomAttribute] = useState('');
+
+  // Sync with initialVariants when they change
+  useEffect(() => {
+    if (initialVariants.length > 0) {
+      setVariants(initialVariants);
+
+      // Extract attributes from existing variants
+      const allAttributes = new Set<string>();
+      initialVariants.forEach(v => {
+        Object.keys(v.variantOptions).forEach(attr => allAttributes.add(attr));
+      });
+
+      if (allAttributes.size > 0) {
+        setSelectedAttributes(Array.from(allAttributes));
+      } else {
+        setSelectedAttributes(['color', 'size']);
+      }
+    }
+  }, [initialVariants]);
 
   // Available attributes
   const availableAttributes = ['color', 'size', 'storage', 'ram', 'material', 'format', 'language'];
@@ -58,9 +77,13 @@ export default function VariantManager({
   };
 
   const removeVariant = (index: number) => {
+    const variant = variants[index];
+    console.log('Removing variant:', variant);
     const updated = variants.filter((_, i) => i !== index);
+    console.log('Updated variants after remove:', updated);
     setVariants(updated);
     onVariantsChange(updated);
+    console.log('onVariantsChange called with', updated.length, 'variants');
   };
 
   const updateVariant = (index: number, field: keyof Variant, value: any) => {
@@ -212,18 +235,38 @@ export default function VariantManager({
           </div>
         ) : (
           <div className="space-y-4">
-            {variants.map((variant, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-4 bg-white">
-                <div className="flex items-start justify-between mb-3">
-                  <h5 className="font-medium text-gray-900">Variant #{index + 1}</h5>
-                  <button
-                    type="button"
-                    onClick={() => removeVariant(index)}
-                    className="text-red-600 hover:bg-red-50 p-1 rounded"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
+            {variants.map((variant, index) => {
+              const isExisting = !!variant.id;
+              const variantLabel = Object.entries(variant.variantOptions)
+                .map(([key, value]) => value)
+                .filter(Boolean)
+                .join(' / ') || `Variant #${index + 1}`;
+
+              return (
+                <div key={variant.id || index} className={`border rounded-lg p-4 ${isExisting ? 'border-blue-300 bg-blue-50/50' : 'border-gray-200 bg-white'}`}>
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h5 className="font-medium text-gray-900">{variantLabel}</h5>
+                        {isExisting && (
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+                            มีอยู่แล้ว
+                          </span>
+                        )}
+                      </div>
+                      {variant.sku && (
+                        <p className="text-xs text-gray-500 mt-1">SKU: {variant.sku}</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeVariant(index)}
+                      className="text-red-600 hover:bg-red-50 p-1 rounded"
+                      title={isExisting ? 'ลบ variant (จะถูกลบเมื่อกดบันทึก)' : 'ลบ variant'}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   {/* Variant Options */}
@@ -303,7 +346,8 @@ export default function VariantManager({
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

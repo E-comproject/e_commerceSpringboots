@@ -45,8 +45,8 @@ public class SecurityConfig {
                 // auth/sign-in/sign-up
                 .requestMatchers("/auth/**").permitAll()
 
-                // websocket endpoint (จาก Dol_Backend)
-                .requestMatchers("/ws-chat/**").permitAll()
+                // websocket endpoint (จาก Dol_Backend) - MUST BE FIRST
+                .requestMatchers("/ws-chat", "/ws-chat/**").permitAll()
 
                 // H2 console (เฉพาะ dev)
                 .requestMatchers("/h2-console/**").permitAll()

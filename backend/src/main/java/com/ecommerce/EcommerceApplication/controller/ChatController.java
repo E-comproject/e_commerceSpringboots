@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ecommerce.EcommerceApplication.dto.ChatMessageDto;
 import com.ecommerce.EcommerceApplication.dto.ChatRoomDto;
 import com.ecommerce.EcommerceApplication.service.ChatService;
-import com.ecommerce.EcommerceApplication.util.AuthUtils;
 
 @RestController
 @RequestMapping("/chat")
@@ -22,15 +21,14 @@ import com.ecommerce.EcommerceApplication.util.AuthUtils;
 public class ChatController {
 
   private final ChatService chatService;
-  private final AuthUtils authUtils;
 
-  public ChatController(ChatService chatService, AuthUtils authUtils) {
+  public ChatController(ChatService chatService) {
     this.chatService = chatService;
-    this.authUtils = authUtils;
   }
 
   private Long getUserId(Authentication auth) {
-    return authUtils.getUserIdFromUsername(auth.getName());
+    // JWT filter sets userId as principal (not username)
+    return (Long) auth.getPrincipal();
   }
 
   // สร้าง/ดึงห้องแชท (buyer ใช้ userId จาก JWT)

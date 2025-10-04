@@ -97,6 +97,7 @@ export default function ProductsPage() {
   });
   const [managingVariants, setManagingVariants] = useState<Product | null>(null);
   const [existingVariants, setExistingVariants] = useState<ProductVariant[]>([]);
+  const [initialVariants, setInitialVariants] = useState<ProductVariant[]>([]);
   const [loadingVariants, setLoadingVariants] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -395,9 +396,12 @@ export default function ProductsPage() {
         imageUrls: v.imageUrls || []
       }));
       setExistingVariants(variants);
+      setInitialVariants(JSON.parse(JSON.stringify(variants))); // Deep copy for delete comparison
+      console.log('Loaded variants:', variants);
     } catch (error) {
       console.error('Failed to fetch variants:', error);
       setError('ไม่สามารถโหลด Variants ได้');
+      setInitialVariants([]);
     } finally {
       setLoadingVariants(false);
     }
@@ -410,13 +414,19 @@ export default function ProductsPage() {
     setError('');
 
     try {
-      // Delete removed variants
-      const existingIds = existingVariants.filter(v => v.id).map(v => v.id);
+      // Delete removed variants (compare with initial state, not current state)
+      const initialIds = initialVariants.filter(v => v.id).map(v => v.id);
       const newIds = variants.filter(v => v.id).map(v => v.id);
-      const deletedIds = existingIds.filter(id => !newIds.includes(id));
+      const deletedIds = initialIds.filter(id => !newIds.includes(id));
+
+      console.log('Initial IDs (ตอนเปิด modal):', initialIds);
+      console.log('New IDs (ตอนกดบันทึก):', newIds);
+      console.log('Deleted IDs (จะถูกลบ):', deletedIds);
 
       for (const id of deletedIds) {
+        console.log(`Deleting variant ${id}...`);
         await api.delete(`/products/variants/${id}`);
+        console.log(`Variant ${id} deleted successfully`);
       }
 
       // Create or update variants
@@ -433,16 +443,19 @@ export default function ProductsPage() {
 
         if (variant.id) {
           // Update existing variant
+          console.log(`Updating variant ${variant.id}...`);
           await api.put(`/products/variants/${variant.id}`, variantData);
         } else {
           // Create new variant
+          console.log(`Creating new variant...`);
           await api.post(`/products/${managingVariants.id}/variants`, variantData);
         }
       }
 
-      setSuccess(`บันทึก ${variants.length} Variants สำเร็จ`);
+      setSuccess(`บันทึก ${variants.length} Variants สำเร็จ${deletedIds.length > 0 ? `, ลบ ${deletedIds.length} รายการ` : ''}`);
       setManagingVariants(null);
       setExistingVariants([]);
+      setInitialVariants([]);
       fetchProducts();
       setTimeout(() => setSuccess(''), 3000);
     } catch (error: any) {
@@ -454,6 +467,7 @@ export default function ProductsPage() {
         errorMessage = errorData.message;
       }
       setError(errorMessage);
+      console.error('Error saving variants:', error);
     } finally {
       setSubmitting(false);
     }

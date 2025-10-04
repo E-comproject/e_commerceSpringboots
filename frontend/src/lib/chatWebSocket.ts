@@ -23,7 +23,7 @@ export class ChatWebSocketService {
     console.log('Attempting to connect to WebSocket...');
 
     // ดึง JWT token จาก localStorage
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
     this.client = new Client({
       webSocketFactory: () => {
@@ -87,21 +87,27 @@ export class ChatWebSocketService {
       return null;
     }
 
+    console.log(`Subscribing to /topic/chat/${roomId}`);
     const subscription = this.client.subscribe(`/topic/chat/${roomId}`, (message) => {
+      console.log(`Received message on /topic/chat/${roomId}:`, message.body);
       try {
         const parsedMessage = JSON.parse(message.body);
+        console.log('Parsed message:', parsedMessage);
         onMessage(parsedMessage);
       } catch (error) {
         console.error('Error parsing chat message:', error);
       }
     });
 
+    console.log(`Successfully subscribed to room ${roomId}`);
     return subscription;
   }
 
   sendMessage(message: ChatSendFrame) {
+    console.log('sendMessage called:', { isConnected: this.isConnected, client: !!this.client, message });
+
     if (!this.client || !this.isConnected) {
-      console.warn('WebSocket not connected, cannot send message');
+      console.warn('WebSocket not connected, cannot send message', { client: !!this.client, isConnected: this.isConnected });
       return false;
     }
 
@@ -117,10 +123,13 @@ export class ChatWebSocketService {
     try {
       this.pendingMessages.add(messageKey);
 
+      console.log('Publishing message to /app/chat.send:', JSON.stringify(message));
       this.client.publish({
         destination: '/app/chat.send',
         body: JSON.stringify(message),
       });
+
+      console.log('Message published successfully');
 
       // Remove from pending after a short delay
       setTimeout(() => {

@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   Menu,
   X,
+  MessageCircle,
 } from 'lucide-react';
 
 export default function Navigation() {
@@ -73,7 +74,7 @@ export default function Navigation() {
                   className="text-gray-700 hover:text-blue-600 font-medium transition flex items-center gap-1"
                 >
                   <Heart className="h-5 w-5" />
-                  <span>สินค้าที่ชอบ</span>
+                  <span>รายการโปรด</span>
                 </Link>
                 <Link
                   href="/cart"
@@ -81,6 +82,13 @@ export default function Navigation() {
                 >
                   <ShoppingCart className="h-5 w-5" />
                   <span>ตะกร้า</span>
+                </Link>
+                <Link
+                  href="/chat"
+                  className="text-gray-700 hover:text-blue-600 font-medium transition flex items-center gap-1"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  <span>แชท</span>
                 </Link>
 
                 {/* Seller Link */}
@@ -216,7 +224,7 @@ export default function Navigation() {
                   className="block px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition"
                   onClick={() => setShowMobileMenu(false)}
                 >
-                  สินค้าที่ชอบ
+                  รายการโปรด
                 </Link>
                 <Link
                   href="/cart"
@@ -224,6 +232,13 @@ export default function Navigation() {
                   onClick={() => setShowMobileMenu(false)}
                 >
                   ตะกร้า
+                </Link>
+                <Link
+                  href="/chat"
+                  className="block px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  แชท
                 </Link>
                 {isSeller && (
                   <Link

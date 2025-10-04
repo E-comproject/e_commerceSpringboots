@@ -13,7 +13,8 @@ import {
   LogOut,
   Menu,
   X,
-  Home
+  Home,
+  MessageCircle
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -53,6 +54,11 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
       name: 'คำสั่งซื้อ',
       href: '/seller/order',
       icon: ShoppingBag,
+    },
+    {
+      name: 'แชทกับลูกค้า',
+      href: '/seller/chat',
+      icon: MessageCircle,
     },
     {
       name: 'รีวิว',
