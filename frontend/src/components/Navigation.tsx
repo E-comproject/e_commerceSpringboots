@@ -24,6 +24,15 @@ export default function Navigation() {
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
+  const getImageUrl = (url: string | undefined) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    if (url.startsWith('/')) {
+      return `http://localhost:8080/api${url}`;
+    }
+    return url;
+  };
+
   // Close profile menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -108,8 +117,16 @@ export default function Navigation() {
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition"
                   >
-                    <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-                      <User className="h-5 w-5 text-white" />
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
+                      {user?.profileImage ? (
+                        <img
+                          src={getImageUrl(user.profileImage)}
+                          alt={user.username}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="h-5 w-5 text-white" />
+                      )}
                     </div>
                     <span className="font-medium text-gray-900">{user?.username}</span>
                   </button>

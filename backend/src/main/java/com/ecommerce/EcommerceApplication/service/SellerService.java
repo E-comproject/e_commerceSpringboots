@@ -59,7 +59,7 @@ public class SellerService {
         app.setStatus("APPROVED");
         sellerAppRepo.save(app);
 
-        user.setRole("SELLER");
+        user.setRole("ROLE_SELLER");
         userRepo.save(user);
     }
 }

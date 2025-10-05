@@ -70,4 +70,13 @@ public class ShopController {
         String reason = body != null ? body.getOrDefault("reason", "") : "";
         return ResponseEntity.ok(shopService.suspendByAdmin(adminId, id, reason));
     }
+
+    // Admin unsuspend
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/admin/shops/{id}/unsuspend")
+    public ResponseEntity<ShopResponse> unsuspend(
+            @AuthenticationPrincipal Long adminId,
+            @PathVariable Long id) {
+        return ResponseEntity.ok(shopService.unsuspendByAdmin(adminId, id));
+    }
 }

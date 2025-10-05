@@ -38,6 +38,23 @@ interface OrderItem {
   variantOptions?: Record<string, string>;
 }
 
+interface Payment {
+  id: number;
+  paymentNumber: string;
+  paymentMethod: string;
+  paymentMethodDisplayName?: string;
+  status: string;
+  statusDisplayName?: string;
+  amount: number;
+  currency: string;
+  gatewayTransactionId?: string;
+  failureReason?: string;
+  createdAt: string;
+  paidAt?: string;
+  failedAt?: string;
+  isCompleted?: boolean;
+}
+
 interface Order {
   id: number;
   orderNumber: string;
@@ -54,6 +71,7 @@ interface Order {
   notes?: string;
   createdAt: string;
   items: OrderItem[];
+  payments?: Payment[];
 }
 
 export default function OrdersPage() {
@@ -145,15 +163,18 @@ export default function OrdersPage() {
     }
   };
 
-  // Define allowed status transitions (matches backend OrderStatus.java)
+  // Define allowed status transitions for SELLER (payment-related statuses are auto-managed by system)
   const getAllowedTransitions = (currentStatus: string): string[] => {
     const transitions: Record<string, string[]> = {
-      PENDING: ['PAYMENT_PENDING', 'PAID', 'CONFIRMED', 'CANCELLED', 'ON_HOLD'],
-      PAYMENT_PENDING: ['PAID', 'PAYMENT_FAILED', 'CANCELLED'],
-      PAID: ['CONFIRMED', 'CANCELLED', 'REFUNDED'],
-      PAYMENT_FAILED: ['PAYMENT_PENDING', 'CANCELLED'],
-      CONFIRMED: ['PROCESSING', 'READY_TO_SHIP', 'CANCELLED', 'REFUNDED'],
-      PROCESSING: ['READY_TO_SHIP', 'ON_HOLD', 'CANCELLED', 'REFUNDED'],
+      // Payment statuses are managed automatically by the payment system
+      PENDING: ['CONFIRMED', 'CANCELLED', 'ON_HOLD'],  // Removed PAYMENT_PENDING, PAID (auto-managed)
+      PAYMENT_PENDING: ['CANCELLED'],  // Can only cancel, PAID/FAILED auto-managed
+      PAID: ['CONFIRMED', 'CANCELLED'],  // Can confirm or cancel, REFUNDED requires payment system
+      PAYMENT_FAILED: ['CANCELLED'],  // Can only cancel
+
+      // Order fulfillment statuses (seller-controlled)
+      CONFIRMED: ['PROCESSING', 'READY_TO_SHIP', 'CANCELLED'],
+      PROCESSING: ['READY_TO_SHIP', 'ON_HOLD', 'CANCELLED'],
       READY_TO_SHIP: ['SHIPPED', 'ON_HOLD', 'CANCELLED'],
       SHIPPED: ['OUT_FOR_DELIVERY', 'DELIVERED', 'RETURNED'],
       OUT_FOR_DELIVERY: ['DELIVERED', 'RETURNED', 'DISPUTED'],
@@ -162,8 +183,8 @@ export default function OrdersPage() {
       COMPLETED: ['DISPUTED', 'RETURNED'],
       CANCELLED: [],
       REFUNDED: [],
-      RETURNED: ['REFUNDED'],
-      DISPUTED: ['COMPLETED', 'CANCELLED', 'REFUNDED'],
+      RETURNED: [],
+      DISPUTED: ['COMPLETED', 'CANCELLED'],
     };
     return transitions[currentStatus] || [];
   };
@@ -594,6 +615,103 @@ export default function OrdersPage() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Payment Information */}
+              <div>
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-gray-600" />
+                    ข้อมูลการชำระเงิน
+                  </h3>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 border border-blue-200 rounded-full">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs font-medium text-blue-700">อัปเดตอัตโนมัติ</span>
+                  </div>
+                </div>
+                {selectedOrder.payments && selectedOrder.payments.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedOrder.payments.map((payment) => {
+                      const paymentStatusConfig: Record<string, { color: string; icon: any; label: string }> = {
+                        PENDING: { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: Clock, label: 'รอชำระเงิน' },
+                        PROCESSING: { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: Clock, label: 'กำลังดำเนินการ' },
+                        COMPLETED: { color: 'bg-green-100 text-green-800 border-green-200', icon: CheckCircle, label: 'ชำระเงินสำเร็จ' },
+                        FAILED: { color: 'bg-red-100 text-red-800 border-red-200', icon: XCircle, label: 'ชำระเงินไม่สำเร็จ' },
+                        CANCELLED: { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: XCircle, label: 'ยกเลิก' },
+                        REFUNDED: { color: 'bg-purple-100 text-purple-800 border-purple-200', icon: AlertCircle, label: 'คืนเงินแล้ว' },
+                      };
+                      const statusConfig = paymentStatusConfig[payment.status] || paymentStatusConfig.PENDING;
+                      const StatusIcon = statusConfig.icon;
+
+                      return (
+                        <div key={payment.id} className={`border-2 rounded-lg p-4 ${statusConfig.color}`}>
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <StatusIcon className="h-5 w-5 flex-shrink-0" />
+                              <div>
+                                <p className="font-semibold">{statusConfig.label}</p>
+                                <p className="text-xs opacity-75 mt-0.5">
+                                  {payment.paymentNumber || `Payment #${payment.id}`}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-lg">฿{payment.amount.toLocaleString()}</p>
+                              <p className="text-xs opacity-75">{payment.currency || 'THB'}</p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="opacity-75">วิธีชำระเงิน:</span>
+                              <span className="font-medium">
+                                {payment.paymentMethodDisplayName || payment.paymentMethod}
+                              </span>
+                            </div>
+
+                            {payment.paidAt && (
+                              <div className="flex items-center justify-between">
+                                <span className="opacity-75">วันที่ชำระ:</span>
+                                <span className="font-medium">
+                                  {new Date(payment.paidAt).toLocaleString('th-TH')}
+                                </span>
+                              </div>
+                            )}
+
+                            {payment.failedAt && (
+                              <div className="flex items-center justify-between">
+                                <span className="opacity-75">วันที่ล้มเหลว:</span>
+                                <span className="font-medium">
+                                  {new Date(payment.failedAt).toLocaleString('th-TH')}
+                                </span>
+                              </div>
+                            )}
+
+                            {payment.gatewayTransactionId && (
+                              <div className="flex items-start justify-between">
+                                <span className="opacity-75">Transaction ID:</span>
+                                <span className="font-mono text-xs break-all text-right max-w-[200px]">
+                                  {payment.gatewayTransactionId}
+                                </span>
+                              </div>
+                            )}
+
+                            {payment.failureReason && (
+                              <div className="mt-2 pt-2 border-t border-current border-opacity-20">
+                                <p className="text-xs opacity-75 mb-1">เหตุผลที่ล้มเหลว:</p>
+                                <p className="text-sm font-medium">{payment.failureReason}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 rounded-lg p-4 text-center">
+                    <p className="text-sm text-gray-600">ยังไม่มีข้อมูลการชำระเงิน</p>
+                  </div>
+                )}
               </div>
 
               {/* Shipping Address */}

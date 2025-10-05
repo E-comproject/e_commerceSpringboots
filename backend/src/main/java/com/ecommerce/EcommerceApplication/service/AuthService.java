@@ -51,12 +51,18 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid credentials");
         }
 
+        // Check if user is banned
+        if (u.getIsBanned() != null && u.getIsBanned()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account has been banned");
+        }
+
         String access = jwt.createToken(u.getId(), u.getUsername(), java.util.List.of(String.valueOf(u.getRole())));
         RefreshToken rt = issueRefresh(u);
 
         return LoginResponse.builder()
                 .accessToken(access)
                 .refreshToken(rt.getToken())
+                .role(u.getRole())
                 .build();
     }
 
@@ -72,12 +78,18 @@ public class AuthService {
         rt.setRevoked(true);
         User u = rt.getUser();
 
+        // Check if user is banned
+        if (u.getIsBanned() != null && u.getIsBanned()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account has been banned");
+        }
+
         RefreshToken newRt = issueRefresh(u);
         String newAccess = jwt.createToken(u.getId(), u.getUsername(), java.util.List.of(String.valueOf(u.getRole())));
 
         return LoginResponse.builder()
                 .accessToken(newAccess)
                 .refreshToken(newRt.getToken())
+                .role(u.getRole())
                 .build();
     }
 }

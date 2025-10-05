@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import api from '@/lib/api';
 import VariantManager from '@/components/seller/VariantManager';
+import ImageUpload from '@/components/ImageUpload';
 
 interface Product {
   id: number;
@@ -473,6 +474,13 @@ export default function ProductsPage() {
     }
   };
 
+  const getImageUrl = (url: string) => {
+    if (url.startsWith('/')) {
+      return `http://localhost:8080/api${url}`;
+    }
+    return url;
+  };
+
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -635,6 +643,9 @@ export default function ProductsPage() {
                         สินค้า
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                        หมวดหมู่
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                         ราคา
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
@@ -656,7 +667,7 @@ export default function ProductsPage() {
                             <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
                               {product.images && product.images.length > 0 ? (
                                 <img
-                                  src={product.images[0].url}
+                                  src={getImageUrl(product.images[0].url)}
                                   alt={product.name}
                                   className="w-full h-full object-cover"
                                 />
@@ -671,6 +682,14 @@ export default function ProductsPage() {
                               </p>
                             </div>
                           </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-600">
+                            {product.categoryId
+                              ? categories.find(c => c.id === product.categoryId)?.name || '-'
+                              : '-'
+                            }
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-1">
@@ -952,34 +971,24 @@ export default function ProductsPage() {
                 </select>
               </div>
 
-              {/* Image URLs */}
+              {/* Image Upload */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">รูปภาพสินค้า (URL)</label>
-                <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">รูปภาพสินค้า</label>
+                <div className="space-y-3">
                   {formData.imageUrls.map((url, index) => (
-                    <div key={index} className="flex gap-2">
-                      <input
-                        type="url"
-                        value={url}
-                        onChange={(e) => updateImageUrl(index, e.target.value)}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        placeholder="https://example.com/image.jpg"
-                      />
-                      {formData.imageUrls.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeImageUrl(index)}
-                          className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      )}
-                    </div>
+                    <ImageUpload
+                      key={index}
+                      value={url}
+                      onChange={(newUrl) => updateImageUrl(index, newUrl)}
+                      onRemove={formData.imageUrls.length > 1 ? () => removeImageUrl(index) : undefined}
+                      canRemove={formData.imageUrls.length > 1}
+                      type="product"
+                    />
                   ))}
                   <button
                     type="button"
                     onClick={addImageUrl}
-                    className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+                    className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-orange-600 hover:text-orange-700 hover:border-orange-500 font-medium transition-colors"
                   >
                     + เพิ่มรูปภาพ
                   </button>
@@ -1035,7 +1044,7 @@ export default function ProductsPage() {
                   <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                     {deletingProduct.images && deletingProduct.images.length > 0 ? (
                       <img
-                        src={deletingProduct.images[0].url}
+                        src={getImageUrl(deletingProduct.images[0].url)}
                         alt={deletingProduct.name}
                         className="w-full h-full object-cover"
                       />
@@ -1272,34 +1281,24 @@ export default function ProductsPage() {
                 </div>
               )}
 
-              {/* Image URLs */}
+              {/* Image Upload */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">รูปภาพสินค้า (URL)</label>
-                <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">รูปภาพสินค้า</label>
+                <div className="space-y-3">
                   {formData.imageUrls.map((url, index) => (
-                    <div key={index} className="flex gap-2">
-                      <input
-                        type="url"
-                        value={url}
-                        onChange={(e) => updateImageUrl(index, e.target.value)}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="https://example.com/image.jpg"
-                      />
-                      {formData.imageUrls.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeImageUrl(index)}
-                          className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      )}
-                    </div>
+                    <ImageUpload
+                      key={index}
+                      value={url}
+                      onChange={(newUrl) => updateImageUrl(index, newUrl)}
+                      onRemove={formData.imageUrls.length > 1 ? () => removeImageUrl(index) : undefined}
+                      canRemove={formData.imageUrls.length > 1}
+                      type="product"
+                    />
                   ))}
                   <button
                     type="button"
                     onClick={addImageUrl}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-orange-600 hover:text-orange-700 hover:border-orange-500 font-medium transition-colors"
                   >
                     + เพิ่มรูปภาพ
                   </button>

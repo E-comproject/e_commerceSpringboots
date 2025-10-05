@@ -285,8 +285,15 @@ export default function ProductDetailPage() {
     return null;
   };
 
+  const getImageUrl = (url: string) => {
+    if (url.startsWith('/')) {
+      return `http://localhost:8080/api${url}`;
+    }
+    return url;
+  };
+
   const images = product?.images && product.images.length > 0
-    ? product.images
+    ? product.images.map(img => ({ ...img, url: getImageUrl(img.url) }))
     : [{ id: 0, url: 'https://via.placeholder.com/600x600?text=No+Image', altText: 'No image' }];
 
   const nextImage = () => {

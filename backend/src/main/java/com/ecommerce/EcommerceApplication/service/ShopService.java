@@ -32,6 +32,7 @@ public class ShopService {
                 .description(s.getDescription())
                 .logoUrl(s.getLogoUrl())
                 .status(s.getStatus())
+                .suspended(s.isSuspended())
                 .build();
     }
 
@@ -112,6 +113,7 @@ public class ShopService {
                 .orElseThrow(() -> new IllegalArgumentException("shop not found"));
 
         s.setStatus("SUSPENDED");
+        s.setSuspended(true);
 
         if (reason != null && !reason.isBlank()) {
             String prefix = "[SUSPENDED:" + reason + "]";
@@ -119,6 +121,18 @@ public class ShopService {
                     ? prefix
                     : s.getDescription() + " " + prefix);
         }
+
+        s = shopRepo.save(s);
+        return toDto(s);
+    }
+
+    @Transactional
+    public ShopResponse unsuspendByAdmin(Long adminId, Long shopId) {
+        Shop s = shopRepo.findById(shopId)
+                .orElseThrow(() -> new IllegalArgumentException("shop not found"));
+
+        s.setStatus("ACTIVE");
+        s.setSuspended(false);
 
         s = shopRepo.save(s);
         return toDto(s);

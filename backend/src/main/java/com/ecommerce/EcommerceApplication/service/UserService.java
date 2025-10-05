@@ -89,6 +89,11 @@ public class UserService {
             u.setPhone(req.getPhone());
         }
 
+        // Update profileImage if provided
+        if (req.getProfileImage() != null) {
+            u.setProfileImage(req.getProfileImage());
+        }
+
         return userRepo.save(u);
     }
 

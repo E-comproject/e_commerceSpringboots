@@ -1,6 +1,10 @@
 package com.ecommerce.EcommerceApplication.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(
@@ -40,6 +44,20 @@ public class User {
     @Column(length = 500)
     private String profileImage;
 
+    @Column(name = "is_banned")
+    private Boolean isBanned = false;
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
+
     public User() {}
 
     // Getters and Setters
@@ -69,4 +87,13 @@ public class User {
 
     public String getProfileImage() { return profileImage; }
     public void setProfileImage(String profileImage) { this.profileImage = profileImage; }
+
+    public Boolean getIsBanned() { return isBanned; }
+    public void setIsBanned(Boolean isBanned) { this.isBanned = isBanned; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    public LocalDateTime getLastLoginAt() { return lastLoginAt; }
+    public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
 }

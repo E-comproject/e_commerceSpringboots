@@ -1,5 +1,7 @@
 package com.ecommerce.EcommerceApplication.security;
 
+import com.ecommerce.EcommerceApplication.model.User;
+import com.ecommerce.EcommerceApplication.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,15 +20,20 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider tokenProvider;
+    private final UserRepository userRepository;
 
-    public JwtAuthenticationFilter(JwtTokenProvider tokenProvider) {
+    public JwtAuthenticationFilter(JwtTokenProvider tokenProvider, UserRepository userRepository) {
         this.tokenProvider = tokenProvider;
+        this.userRepository = userRepository;
     }
     
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String p = request.getServletPath();
-        return p.startsWith("/auth/") || "/health".equals(p) || "/error".equals(p);
+        return p.startsWith("/auth/")
+            || p.startsWith("/dev/")
+            || "/health".equals(p)
+            || "/error".equals(p);
 }
 
     @Override
@@ -53,6 +60,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Long userId = tokenProvider.getUserId(token);
                 String username = tokenProvider.getUsername(token);
                 List<String> roles = tokenProvider.getRoles(token);
+
+                // Check if user is banned
+                User user = userRepository.findById(userId).orElse(null);
+                if (user != null && user.getIsBanned() != null && user.getIsBanned()) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"Your account has been banned\"}");
+                    return;
+                }
 
                 var authorities = roles.stream()
                         .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)

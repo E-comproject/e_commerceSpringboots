@@ -5,6 +5,7 @@ import '@/styles/globals/globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import Navigation from '@/components/Navigation'
 import OmiseScript from '@/components/OmiseScript'
+import { usePathname } from 'next/navigation'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -13,6 +14,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
+  const isAdminRoute = pathname?.startsWith('/admin')
+
   return (
     <html lang="th">
       <head>
@@ -23,7 +27,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <OmiseScript />
-          <Navigation />
+          {!isAdminRoute && <Navigation />}
           {children}
         </AuthProvider>
       </body>

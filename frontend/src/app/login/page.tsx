@@ -22,8 +22,27 @@ export default function LoginPage() {
     try {
       await login(email, password);
       console.log('✅ Login successful, redirecting...');
-      // Use window.location.href for full page reload to ensure auth state is loaded
-      window.location.href = '/';
+
+      // Check user role and redirect accordingly
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        // Decode JWT to get role (simple base64 decode of payload)
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const roles = payload.roles || [];
+
+        console.log('👤 User roles:', roles);
+
+        if (roles.includes('ROLE_ADMIN')) {
+          window.location.href = '/admin/dashboard';
+        } else if (roles.includes('ROLE_SELLER')) {
+          // Redirect to seller landing page, it will check shop and redirect accordingly
+          window.location.href = '/seller';
+        } else {
+          window.location.href = '/';
+        }
+      } else {
+        window.location.href = '/';
+      }
     } catch (err: any) {
       setError(
         err.response?.data?.message ||

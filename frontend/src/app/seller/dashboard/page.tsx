@@ -77,10 +77,12 @@ export default function SellerDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!shopLoading && shop) {
+    if (!shopLoading && !shop) {
+      router.push('/seller/create-shop');
+    } else if (!shopLoading && shop) {
       fetchDashboardData();
     }
-  }, [shop, shopLoading]);
+  }, [shop, shopLoading, router]);
 
   const fetchDashboardData = async () => {
     try {
@@ -272,17 +274,12 @@ export default function SellerDashboard() {
     }
   };
 
-  if (shopLoading || loading) {
+  if (shopLoading || loading || !shop) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
-  }
-
-  if (!shop) {
-    router.push('/seller/create-shop');
-    return null;
   }
 
   const StatCard = ({

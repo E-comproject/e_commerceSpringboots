@@ -329,8 +329,23 @@ public class PaymentServiceImpl implements PaymentService {
         if (isOrderFullyPaid(orderId)) {
             Order order = orderRepository.findById(orderId).orElse(null);
             if (order != null && order.getStatus() == OrderStatus.PENDING) {
-                order.setStatus(OrderStatus.PAID);
-                orderRepository.save(order);
+                // Use changeStatusAutomatically to properly track status changes with history
+                boolean updated = order.changeStatusAutomatically(
+                    OrderStatus.PAID,
+                    "Payment completed successfully - Order is now paid and waiting for seller confirmation"
+                );
+
+                if (updated) {
+                    orderRepository.save(order);
+                    logger.info("✅ Order #{} status automatically updated from PENDING to PAID after payment completion",
+                               order.getOrderNumber());
+                } else {
+                    logger.warn("⚠️ Failed to update Order #{} status to PAID - invalid transition from {}",
+                               order.getOrderNumber(), order.getStatus());
+                }
+            } else if (order != null) {
+                logger.debug("Order #{} is already in status: {}, skipping auto-update",
+                           order.getOrderNumber(), order.getStatus());
             }
         }
     }

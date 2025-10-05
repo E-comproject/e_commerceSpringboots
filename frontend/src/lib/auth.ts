@@ -14,6 +14,7 @@ export interface LoginData {
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
+  role: string;
   userId?: number;
   username?: string;
   email?: string;
@@ -34,10 +35,11 @@ export const authService = {
     }
 
     const response = await api.post<LoginResponse>('/auth/login', data);
-    const { accessToken, refreshToken } = response.data;
+    const { accessToken, refreshToken, role } = response.data;
 
     console.log('💾 Storing new tokens...');
     console.log('🔑 New access token (first 20 chars):', accessToken.substring(0, 20) + '...');
+    console.log('👤 User role:', role);
 
     // Store tokens in localStorage
     if (typeof window !== 'undefined') {

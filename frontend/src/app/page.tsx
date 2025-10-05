@@ -34,10 +34,18 @@ interface Product {
   ratingCount?: number;
 }
 
+interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  icon?: string;
+}
+
 export default function HomePage() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentBanner, setCurrentBanner] = useState(0);
@@ -66,6 +74,7 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
 
     // Auto-rotate banners
     const interval = setInterval(() => {
@@ -86,20 +95,41 @@ export default function HomePage() {
     }
   };
 
-  const categories = [
-    { name: 'เสื้อผ้า', icon: '👔', bg: 'from-pink-500 to-rose-500' },
-    { name: 'อิเล็กทรอนิกส์', icon: '💻', bg: 'from-blue-500 to-cyan-500' },
-    { name: 'ของใช้ในบ้าน', icon: '🏠', bg: 'from-purple-500 to-indigo-500' },
-    { name: 'ความงาม', icon: '💄', bg: 'from-pink-500 to-fuchsia-500' },
-    { name: 'กีฬา', icon: '⚽', bg: 'from-green-500 to-emerald-500' },
-    { name: 'หนังสือ', icon: '📚', bg: 'from-amber-500 to-orange-500' },
-    { name: 'ของเล่น', icon: '🧸', bg: 'from-red-500 to-pink-500' },
-    { name: 'อื่นๆ', icon: '🎁', bg: 'from-gray-500 to-slate-500' }
-  ];
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/categories', {
+        params: { size: 8 }
+      });
+      setCategories(response.data.content || []);
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+    }
+  };
+
+  // Icon and color mapping for categories
+  const categoryStyles: Record<string, { icon: string; bg: string }> = {
+    'เสื้อผ้า': { icon: '👔', bg: 'from-pink-500 to-rose-500' },
+    'อิเล็กทรอนิกส์': { icon: '💻', bg: 'from-blue-500 to-cyan-500' },
+    'ของใช้ในบ้าน': { icon: '🏠', bg: 'from-purple-500 to-indigo-500' },
+    'ความงาม': { icon: '💄', bg: 'from-pink-500 to-fuchsia-500' },
+    'กีฬา': { icon: '⚽', bg: 'from-green-500 to-emerald-500' },
+    'หนังสือ': { icon: '📚', bg: 'from-amber-500 to-orange-500' },
+    'ของเล่น': { icon: '🧸', bg: 'from-red-500 to-pink-500' },
+    'default': { icon: '🎁', bg: 'from-gray-500 to-slate-500' }
+  };
+
+  const getCategoryStyle = (name: string) => {
+    return categoryStyles[name] || categoryStyles['default'];
+  };
 
   const getProductImage = (product: Product) => {
     if (product.images && product.images.length > 0) {
-      return product.images[0].url;
+      const url = product.images[0].url;
+      // Add API base URL if the URL is relative
+      if (url.startsWith('/')) {
+        return `http://localhost:8080/api${url}`;
+      }
+      return url;
     }
     return 'https://via.placeholder.com/400x400?text=No+Image';
   };
@@ -267,18 +297,21 @@ export default function HomePage() {
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">หมวดหมู่สินค้า</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-            {categories.map((category) => (
-              <button
-                key={category.name}
-                onClick={() => router.push('/products')}
-                className="group"
-              >
-                <div className={`aspect-square bg-gradient-to-br ${category.bg} rounded-2xl p-4 flex items-center justify-center text-5xl group-hover:scale-105 transition shadow-lg`}>
-                  {category.icon}
-                </div>
-                <p className="text-sm font-medium text-gray-900 mt-2 text-center">{category.name}</p>
-              </button>
-            ))}
+            {categories.map((category) => {
+              const style = getCategoryStyle(category.name);
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => router.push(`/products?categoryId=${category.id}`)}
+                  className="group"
+                >
+                  <div className={`aspect-square bg-gradient-to-br ${style.bg} rounded-2xl p-4 flex items-center justify-center text-5xl group-hover:scale-105 transition shadow-lg`}>
+                    {style.icon}
+                  </div>
+                  <p className="text-sm font-medium text-gray-900 mt-2 text-center">{category.name}</p>
+                </button>
+              );
+            })}
           </div>
         </section>
 

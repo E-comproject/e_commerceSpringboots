@@ -18,7 +18,10 @@ import java.util.UUID;
 @CrossOrigin(origins = "http://localhost:3000")
 public class FileUploadController {
 
-    private static final String UPLOAD_DIR = "uploads/chat/";
+    private static final String UPLOAD_DIR_CHAT = "uploads/chat/";
+    private static final String UPLOAD_DIR_PRODUCTS = "uploads/products/";
+    private static final String UPLOAD_DIR_PROFILES = "uploads/profiles/";
+    private static final String UPLOAD_DIR_SHOPS = "uploads/shops/";
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     private static final String[] ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"};
 
@@ -58,7 +61,7 @@ public class FileUploadController {
             String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
 
             // Create upload directory if not exists
-            Path uploadPath = Paths.get(UPLOAD_DIR);
+            Path uploadPath = Paths.get(UPLOAD_DIR_CHAT);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
@@ -68,7 +71,7 @@ public class FileUploadController {
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
             // Return file URL
-            String fileUrl = "/api/files/chat/" + uniqueFilename;
+            String fileUrl = "/files/chat/" + uniqueFilename;
 
             return ResponseEntity.ok(Map.of(
                 "url", fileUrl,
@@ -85,8 +88,106 @@ public class FileUploadController {
 
     @GetMapping("/chat/{filename}")
     public ResponseEntity<byte[]> getChatImage(@PathVariable String filename) {
+        return getImage(UPLOAD_DIR_CHAT, filename);
+    }
+
+    // Upload product image
+    @PostMapping("/upload/product")
+    public ResponseEntity<?> uploadProductImage(@RequestParam("file") MultipartFile file) {
+        return uploadImage(file, UPLOAD_DIR_PRODUCTS, "product");
+    }
+
+    @GetMapping("/products/{filename}")
+    public ResponseEntity<byte[]> getProductImage(@PathVariable String filename) {
+        return getImage(UPLOAD_DIR_PRODUCTS, filename);
+    }
+
+    // Upload profile image
+    @PostMapping("/upload/profile")
+    public ResponseEntity<?> uploadProfileImage(@RequestParam("file") MultipartFile file) {
+        return uploadImage(file, UPLOAD_DIR_PROFILES, "profile");
+    }
+
+    @GetMapping("/profiles/{filename}")
+    public ResponseEntity<byte[]> getProfileImage(@PathVariable String filename) {
+        return getImage(UPLOAD_DIR_PROFILES, filename);
+    }
+
+    // Upload shop logo
+    @PostMapping("/upload/shop")
+    public ResponseEntity<?> uploadShopLogo(@RequestParam("file") MultipartFile file) {
+        return uploadImage(file, UPLOAD_DIR_SHOPS, "shop");
+    }
+
+    @GetMapping("/shops/{filename}")
+    public ResponseEntity<byte[]> getShopImage(@PathVariable String filename) {
+        return getImage(UPLOAD_DIR_SHOPS, filename);
+    }
+
+    // Generic upload method
+    private ResponseEntity<?> uploadImage(MultipartFile file, String uploadDir, String type) {
         try {
-            Path filePath = Paths.get(UPLOAD_DIR).resolve(filename);
+            // Validate file
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "ไฟล์ว่างเปล่า"));
+            }
+
+            if (file.getSize() > MAX_FILE_SIZE) {
+                return ResponseEntity.badRequest().body(Map.of("error", "ไฟล์ใหญ่เกินไป (สูงสุด 5MB)"));
+            }
+
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "ชื่อไฟล์ไม่ถูกต้อง"));
+            }
+
+            // Check file extension
+            String fileExtension = getFileExtension(originalFilename).toLowerCase();
+            boolean isValidExtension = false;
+            for (String allowedExt : ALLOWED_EXTENSIONS) {
+                if (fileExtension.equals(allowedExt)) {
+                    isValidExtension = true;
+                    break;
+                }
+            }
+
+            if (!isValidExtension) {
+                return ResponseEntity.badRequest().body(Map.of("error", "ประเภทไฟล์ไม่ถูกต้อง (รองรับเฉพาะรูปภาพ)"));
+            }
+
+            // Generate unique filename
+            String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
+
+            // Create upload directory if not exists
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            // Save file
+            Path filePath = uploadPath.resolve(uniqueFilename);
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            // Return file URL
+            String fileUrl = "/files/" + type + "s/" + uniqueFilename;
+
+            return ResponseEntity.ok(Map.of(
+                "url", fileUrl,
+                "filename", originalFilename,
+                "size", file.getSize(),
+                "type", file.getContentType()
+            ));
+
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "ไม่สามารถบันทึกไฟล์ได้"));
+        }
+    }
+
+    // Generic get image method
+    private ResponseEntity<byte[]> getImage(String uploadDir, String filename) {
+        try {
+            Path filePath = Paths.get(uploadDir).resolve(filename);
 
             if (!Files.exists(filePath)) {
                 return ResponseEntity.notFound().build();

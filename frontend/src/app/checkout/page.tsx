@@ -53,6 +53,20 @@ interface ShippingAddress {
   country: string;
 }
 
+interface SavedAddress {
+  id: number;
+  recipientName: string;
+  phone: string;
+  line1: string;
+  line2?: string;
+  subdistrict?: string;
+  district?: string;
+  province?: string;
+  postalCode?: string;
+  country: string;
+  isDefault: boolean;
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { isAuthenticated, authLoading, user } = useAuth();
@@ -62,6 +76,11 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Saved addresses
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+  const [showSavedAddresses, setShowSavedAddresses] = useState(false);
 
   // Shipping Address
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
@@ -87,6 +106,7 @@ export default function CheckoutPage() {
       router.push('/login');
     } else if (isAuthenticated) {
       fetchCart();
+      fetchSavedAddresses();
       // Pre-fill user data if available
       if (user) {
         setShippingAddress(prev => ({
@@ -104,6 +124,15 @@ export default function CheckoutPage() {
       setOrderId(null);
     }
   }, [paymentMethod]);
+
+  const getImageUrl = (url: string | undefined) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    if (url.startsWith('/')) {
+      return `http://localhost:8080/api${url}`;
+    }
+    return url;
+  };
 
   const fetchCart = async () => {
     try {
@@ -133,6 +162,37 @@ export default function CheckoutPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchSavedAddresses = async () => {
+    try {
+      const response = await api.get<SavedAddress[]>('/addresses');
+      setSavedAddresses(response.data);
+
+      // Auto-select default address if exists
+      const defaultAddr = response.data.find(addr => addr.isDefault);
+      if (defaultAddr) {
+        handleSelectAddress(defaultAddr);
+      }
+    } catch (err) {
+      console.error('Failed to fetch saved addresses:', err);
+    }
+  };
+
+  const handleSelectAddress = (address: SavedAddress) => {
+    setSelectedAddressId(address.id);
+    setShippingAddress({
+      fullName: address.recipientName,
+      phone: address.phone,
+      email: user?.email || shippingAddress.email,
+      addressLine1: address.line1,
+      addressLine2: address.line2 || '',
+      city: address.district || '',
+      province: address.province || '',
+      postalCode: address.postalCode || '',
+      country: address.country,
+    });
+    setShowSavedAddresses(false);
   };
 
   const calculateSubtotal = () => {
@@ -462,12 +522,76 @@ export default function CheckoutPage() {
             {/* Step 1: Shipping Address */}
             {currentStep === 1 && (
               <div className="bg-white rounded-xl shadow-sm p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <MapPin className="h-6 w-6 text-blue-600" />
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <MapPin className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900">ที่อยู่จัดส่ง</h2>
                   </div>
-                  <h2 className="text-xl font-bold text-gray-900">ที่อยู่จัดส่ง</h2>
+                  {savedAddresses.length > 0 && (
+                    <button
+                      onClick={() => setShowSavedAddresses(!showSavedAddresses)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition"
+                    >
+                      <MapPin className="h-4 w-4" />
+                      {showSavedAddresses ? 'ซ่อนที่อยู่ที่บันทึกไว้' : 'เลือกที่อยู่ที่บันทึกไว้'}
+                    </button>
+                  )}
                 </div>
+
+                {/* Saved Addresses List */}
+                {showSavedAddresses && savedAddresses.length > 0 && (
+                  <div className="mb-6 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-gray-700">ที่อยู่ที่บันทึกไว้</h3>
+                      <a
+                        href="/settings?tab=addresses"
+                        target="_blank"
+                        className="text-xs text-blue-600 hover:text-blue-700"
+                      >
+                        จัดการที่อยู่
+                      </a>
+                    </div>
+                    <div className="grid gap-3">
+                      {savedAddresses.map((addr) => (
+                        <div
+                          key={addr.id}
+                          onClick={() => handleSelectAddress(addr)}
+                          className={`p-4 border-2 rounded-lg cursor-pointer transition ${
+                            selectedAddressId === addr.id
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-blue-300'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="font-semibold text-gray-900">{addr.recipientName}</p>
+                                {addr.isDefault && (
+                                  <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                                    ค่าเริ่มต้น
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600">{addr.phone}</p>
+                              <p className="text-sm text-gray-700 mt-1">
+                                {addr.line1}
+                                {addr.line2 && ` ${addr.line2}`}
+                                {addr.district && ` ${addr.district}`}
+                                {addr.province && ` ${addr.province}`}
+                                {addr.postalCode && ` ${addr.postalCode}`}
+                              </p>
+                            </div>
+                            {selectedAddressId === addr.id && (
+                              <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Full Name */}
@@ -757,7 +881,11 @@ export default function CheckoutPage() {
                       <div key={item.id} className="flex gap-4 pb-4 border-b border-gray-200 last:border-0">
                         <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                           {item.productImage ? (
-                            <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover" />
+                            <img
+                              src={getImageUrl(item.productImage)}
+                              alt={item.productName}
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <Package className="h-8 w-8 text-gray-400" />

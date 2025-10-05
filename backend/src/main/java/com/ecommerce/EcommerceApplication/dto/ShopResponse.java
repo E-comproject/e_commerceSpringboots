@@ -7,16 +7,18 @@ public class ShopResponse {
     private String description;
     private String logoUrl;
     private String status;
+    private boolean suspended;
 
     public ShopResponse() {}
 
-    public ShopResponse(Long id, Long ownerId, String name, String description, String logoUrl, String status) {
+    public ShopResponse(Long id, Long ownerId, String name, String description, String logoUrl, String status, boolean suspended) {
         this.id = id;
         this.ownerId = ownerId;
         this.name = name;
         this.description = description;
         this.logoUrl = logoUrl;
         this.status = status;
+        this.suspended = suspended;
     }
 
     public static ShopResponseBuilder builder() {
@@ -41,6 +43,9 @@ public class ShopResponse {
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
+    public boolean isSuspended() { return suspended; }
+    public void setSuspended(boolean suspended) { this.suspended = suspended; }
+
     public static class ShopResponseBuilder {
         private Long id;
         private Long ownerId;
@@ -48,6 +53,7 @@ public class ShopResponse {
         private String description;
         private String logoUrl;
         private String status;
+        private boolean suspended;
 
         ShopResponseBuilder() {}
 
@@ -81,8 +87,13 @@ public class ShopResponse {
             return this;
         }
 
+        public ShopResponseBuilder suspended(boolean suspended) {
+            this.suspended = suspended;
+            return this;
+        }
+
         public ShopResponse build() {
-            return new ShopResponse(id, ownerId, name, description, logoUrl, status);
+            return new ShopResponse(id, ownerId, name, description, logoUrl, status, suspended);
         }
     }
 }

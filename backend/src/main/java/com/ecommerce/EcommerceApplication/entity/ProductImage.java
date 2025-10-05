@@ -19,9 +19,6 @@ public class ProductImage {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "product_id", nullable = false)
-    private Long productId;
-
     @Column(name = "url", nullable = false)
     private String url;
 
@@ -32,20 +29,11 @@ public class ProductImage {
     private String altText;
 
     @Column(name = "is_primary")
-private Boolean isPrimary = false;
-
-public Boolean getIsPrimary() {
-    return isPrimary;
-}
-
-public void setIsPrimary(Boolean isPrimary) {
-    this.isPrimary = isPrimary;
-}
-
+    private Boolean isPrimary = false;
 
     // Relationships
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", insertable = false, updatable = false)
+    @JoinColumn(name = "product_id", nullable = false)
     @JsonBackReference("product-images")
     private Product product;
 
@@ -54,8 +42,8 @@ public void setIsPrimary(Boolean isPrimary) {
     // Constructors
     public ProductImage() {}
 
-    public ProductImage(Long productId, String url) {
-        this.productId = productId;
+    public ProductImage(Product product, String url) {
+        this.product = product;
         this.url = url;
     }
 
@@ -66,14 +54,6 @@ public void setIsPrimary(Boolean isPrimary) {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public Long getProductId() {
-        return productId;
-    }
-
-    public void setProductId(Long productId) {
-        this.productId = productId;
     }
 
     public String getUrl() {
@@ -98,6 +78,14 @@ public void setIsPrimary(Boolean isPrimary) {
 
     public void setAltText(String altText) {
         this.altText = altText;
+    }
+
+    public Boolean getIsPrimary() {
+        return isPrimary;
+    }
+
+    public void setIsPrimary(Boolean isPrimary) {
+        this.isPrimary = isPrimary;
     }
 
     public Product getProduct() {

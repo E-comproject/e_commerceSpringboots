@@ -95,20 +95,23 @@ public class ProductServiceImpl implements ProductService {
         String baseSlug = slugify(req.name);
         p.setSlug(uniqueSlug(baseSlug));
 
-        // Add images if provided
+        // Save product first to get ID
+        p = repo.save(p);
+
+        // Add images if provided (after product has ID)
         if (req.imageUrls != null && !req.imageUrls.isEmpty()) {
-            List<ProductImage> images = new ArrayList<>();
             for (int i = 0; i < req.imageUrls.size(); i++) {
                 ProductImage img = new ProductImage();
-                img.setProduct(p);
+                img.setProduct(p); // Set relationship - JPA will handle product_id
                 img.setUrl(req.imageUrls.get(i));
                 img.setSortOrder(i);
-                images.add(img);
+                img.setIsPrimary(i == 0); // First image is primary
+                p.getImages().add(img);
             }
-            p.setImages(images);
+            // Save again with images
+            p = repo.save(p);
         }
 
-        repo.save(p);
         return toDto(p);
     }
 

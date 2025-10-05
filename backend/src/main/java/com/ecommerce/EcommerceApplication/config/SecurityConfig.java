@@ -39,13 +39,16 @@ public class SecurityConfig {
                 // preflight
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
+                // dev endpoints (เฉพาะ dev profile) - MUST BE FIRST
+                .requestMatchers("/dev/**").permitAll()
+
                 // public health/error
                 .requestMatchers("/health", "/error").permitAll()
 
                 // auth/sign-in/sign-up
                 .requestMatchers("/auth/**").permitAll()
 
-                // websocket endpoint (จาก Dol_Backend) - MUST BE FIRST
+                // websocket endpoint (จาก Dol_Backend)
                 .requestMatchers("/ws-chat", "/ws-chat/**").permitAll()
 
                 // H2 console (เฉพาะ dev)
@@ -63,7 +66,8 @@ public class SecurityConfig {
                 .requestMatchers("/payments/omise/payment-methods").permitAll()
 
                 // file uploads - GET เพื่อดูรูป public, POST ต้อง auth
-                .requestMatchers(HttpMethod.GET, "/files/chat/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/files/upload/**").authenticated()
 
                 // ตัวอย่าง role-based
                 .requestMatchers("/admin/**").hasRole("ADMIN")

@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { ShopProvider } from '@/contexts/ShopContext';
+import { ShopProvider, useShop } from '@/contexts/ShopContext';
 import {
   LayoutDashboard,
   Package,
@@ -39,7 +39,41 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
     router.push('/');
   };
 
-  const navItems = [
+  return (
+    <ShopProvider>
+      <SellerLayoutContent
+        user={user}
+        pathname={pathname}
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        handleLogout={handleLogout}
+      >
+        {children}
+      </SellerLayoutContent>
+    </ShopProvider>
+  );
+}
+
+function SellerLayoutContent({
+  user,
+  pathname,
+  sidebarOpen,
+  setSidebarOpen,
+  handleLogout,
+  children
+}: {
+  user: any;
+  pathname: string;
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
+  handleLogout: () => void;
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  const { shop, loading: shopLoading } = useShop();
+
+  // Navigation items when user has a shop
+  const navItemsWithShop = [
     {
       name: 'แดชบอร์ด',
       href: '/seller/dashboard',
@@ -72,6 +106,18 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
     },
   ];
 
+  // Navigation items when user doesn't have a shop yet
+  const navItemsWithoutShop = [
+    {
+      name: 'สร้างร้านค้า',
+      href: '/seller/create-shop',
+      icon: Store,
+    },
+  ];
+
+  // Use appropriate nav items based on shop status
+  const navItems = !shopLoading && shop ? navItemsWithShop : navItemsWithoutShop;
+
   const NavLink = ({ item }: { item: typeof navItems[0] }) => {
     const isActive = pathname === item.href;
     const Icon = item.icon;
@@ -95,8 +141,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   };
 
   return (
-    <ShopProvider>
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500">
         {/* Mobile Header */}
         <div className="lg:hidden fixed top-0 left-0 right-0 bg-white/10 backdrop-blur-md border-b border-white/20 z-50">
           <div className="flex items-center justify-between p-4">
@@ -187,6 +232,5 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
           </div>
         </main>
       </div>
-    </ShopProvider>
   );
 }

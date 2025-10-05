@@ -25,6 +25,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import api from '@/lib/api';
+import ImageUpload from '@/components/ImageUpload';
 
 interface UserProfile {
   id: number;
@@ -65,10 +66,20 @@ export default function ProfilePage() {
     firstName: '',
     lastName: '',
     email: '',
-    phone: ''
+    phone: '',
+    profileImage: ''
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const getImageUrl = (url: string | undefined) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    if (url.startsWith('/')) {
+      return `http://localhost:8080/api${url}`;
+    }
+    return url;
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -91,7 +102,8 @@ export default function ProfilePage() {
         firstName: response.data.firstName || '',
         lastName: response.data.lastName || '',
         email: response.data.email || '',
-        phone: response.data.phone || ''
+        phone: response.data.phone || '',
+        profileImage: response.data.profileImage || ''
       });
     } catch (error: any) {
       console.error('Failed to fetch profile:', error);
@@ -124,14 +136,17 @@ export default function ProfilePage() {
 
   const handleUpdateProfile = async () => {
     try {
+      setLoading(true);
       await api.put('/users/me', editForm);
       setSuccess('อัพเดทข้อมูลสำเร็จ');
       setIsEditing(false);
-      fetchProfile();
+      await fetchProfile(); // Fetch updated profile
       setTimeout(() => setSuccess(''), 3000);
     } catch (error: any) {
       setError(error.response?.data?.message || 'ไม่สามารถอัพเดทข้อมูลได้');
       setTimeout(() => setError(''), 3000);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -226,12 +241,18 @@ export default function ProfilePage() {
                 <div className="relative w-24 h-24 mx-auto mb-4">
                   <div className="w-full h-full bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
                     {profile.profileImage ? (
-                      <img src={profile.profileImage} alt={profile.username} className="w-full h-full object-cover" />
+                      <img src={getImageUrl(profile.profileImage)} alt={profile.username} className="w-full h-full object-cover" />
                     ) : (
                       <User className="h-12 w-12 text-white" />
                     )}
                   </div>
-                  <button className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white hover:bg-blue-700 transition">
+                  <button
+                    onClick={() => {
+                      setActiveTab('profile');
+                      setIsEditing(true);
+                    }}
+                    className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white hover:bg-blue-700 transition"
+                  >
                     <Camera className="h-4 w-4 text-white" />
                   </button>
                 </div>
@@ -325,7 +346,8 @@ export default function ProfilePage() {
                             firstName: profile.firstName || '',
                             lastName: profile.lastName || '',
                             email: profile.email || '',
-                            phone: profile.phone || ''
+                            phone: profile.phone || '',
+                            profileImage: profile.profileImage || ''
                           });
                         }}
                         className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
@@ -343,6 +365,18 @@ export default function ProfilePage() {
                     </div>
                   )}
                 </div>
+
+                {/* Profile Image Upload (Edit Mode) */}
+                {isEditing && (
+                  <div className="mb-6">
+                    <ImageUpload
+                      value={editForm.profileImage}
+                      onChange={(url) => setEditForm(prev => ({ ...prev, profileImage: url }))}
+                      type="profile"
+                      label="รูปโปรไฟล์"
+                    />
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-6">
                   <div>

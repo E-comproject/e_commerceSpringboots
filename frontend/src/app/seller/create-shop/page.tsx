@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useShop } from '@/contexts/ShopContext';
-import { Store, AlertCircle, CheckCircle, Upload } from 'lucide-react';
+import { Store, AlertCircle, CheckCircle } from 'lucide-react';
+import ImageUpload from '@/components/ImageUpload';
 
 export default function CreateShopPage() {
   const router = useRouter();
-  const { createShop, hasShop } = useShop();
+  const { createShop, hasShop, loading: shopLoading } = useShop();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -16,10 +17,20 @@ export default function CreateShopPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // If already has shop, redirect to dashboard
-  if (hasShop) {
-    router.push('/seller/dashboard');
-    return null;
+  // If already has shop, redirect to dashboard immediately
+  useEffect(() => {
+    if (!shopLoading && hasShop) {
+      router.replace('/seller/dashboard');
+    }
+  }, [shopLoading, hasShop, router]);
+
+  // Show loading while checking shop (and redirect if has shop)
+  if (shopLoading || hasShop) {
+    return (
+      <div className="w-full h-full flex items-center justify-center p-6">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -123,40 +134,17 @@ export default function CreateShopPage() {
             </p>
           </div>
 
-          {/* Logo URL */}
+          {/* Logo Upload */}
           <div>
-            <label htmlFor="logoUrl" className="block text-sm font-medium text-gray-700 mb-2">
-              โลโก้ร้านค้า (URL)
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Upload className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                id="logoUrl"
-                name="logoUrl"
-                type="url"
-                value={formData.logoUrl}
-                onChange={handleChange}
-                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                placeholder="https://example.com/logo.png"
-              />
-            </div>
+            <ImageUpload
+              value={formData.logoUrl}
+              onChange={(url) => setFormData({ ...formData, logoUrl: url })}
+              type="shop"
+              label="โลโก้ร้านค้า (ไม่บังคับ)"
+            />
             <p className="mt-1 text-sm text-gray-500">
-              URL ของรูปโลโก้ร้านค้า (ไม่บังคับ)
+              อัปโหลดรูปโลโก้ร้านค้า (JPG, PNG, GIF สูงสุด 5MB)
             </p>
-            {formData.logoUrl && (
-              <div className="mt-3">
-                <img
-                  src={formData.logoUrl}
-                  alt="Logo preview"
-                  className="h-20 w-20 object-cover rounded-lg border border-gray-300"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              </div>
-            )}
           </div>
 
           {/* Submit Button */}

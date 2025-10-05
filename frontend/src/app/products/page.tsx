@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Filter, Grid, List, Star, ShoppingCart } from 'lucide-react';
 import api from '@/lib/api';
 
@@ -19,25 +19,51 @@ interface Product {
   stockQuantity: number;
   ratingAvg?: number;
   ratingCount?: number;
+  categoryId?: number;
+}
+
+interface Category {
+  id: number;
+  name: string;
+  slug: string;
 }
 
 export default function ProductsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const categoryId = searchParams.get('categoryId');
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
+  // Fetch products when category changes
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [categoryId]);
+
+  useEffect(() => {
+    if (categoryId) {
+      api.get(`/categories/${categoryId}`)
+        .then(res => setSelectedCategory(res.data))
+        .catch(err => console.error('Failed to fetch category:', err));
+    } else {
+      setSelectedCategory(null);
+    }
+  }, [categoryId]);
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/products');
+      const params: any = {};
+      if (categoryId) {
+        params.categoryId = categoryId;
+      }
+      const response = await api.get('/products/search', { params });
       // Filter only active products with stock
-      const activeProducts = response.data.filter((p: Product) => {
+      const activeProducts = (response.data.content || response.data).filter((p: Product) => {
         const stock = p.hasVariants ? (p.totalStock || 0) : p.stockQuantity;
         return stock > 0;
       });
@@ -49,6 +75,7 @@ export default function ProductsPage() {
     }
   };
 
+  // Client-side filtering for search query (instant feedback)
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     product.description?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -63,7 +90,12 @@ export default function ProductsPage() {
 
   const getProductImage = (product: Product) => {
     if (product.images && product.images.length > 0) {
-      return product.images[0].url;
+      const url = product.images[0].url;
+      // Add API base URL if the URL is relative
+      if (url.startsWith('/')) {
+        return `http://localhost:8080/api${url}`;
+      }
+      return url;
     }
     return 'https://via.placeholder.com/400x400?text=No+Image';
   };
@@ -91,6 +123,20 @@ export default function ProductsPage() {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">สินค้าทั้งหมด</h1>
           <p className="text-gray-600">ค้นพบสินค้าคุณภาพจากร้านค้าต่างๆ</p>
         </div>
+
+        {/* Selected Category Indicator */}
+        {selectedCategory && (
+          <div className="mb-4 flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+            <span className="text-gray-600">หมวดหมู่:</span>
+            <span className="font-semibold text-blue-700">{selectedCategory.name}</span>
+            <button
+              onClick={() => router.push('/products')}
+              className="ml-auto text-sm bg-white text-blue-600 px-3 py-1 rounded-lg border border-blue-300 hover:bg-blue-100 transition-colors"
+            >
+              ดูสินค้าทั้งหมด
+            </button>
+          </div>
+        )}
 
         {/* Search & Filter Bar */}
         <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-col sm:flex-row gap-4">
