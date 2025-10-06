@@ -2,6 +2,7 @@ package com.ecommerce.EcommerceApplication.entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Random;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -247,8 +248,12 @@ public class Payment {
 
     /**
      * Generate unique payment number
+     * Format: PAY{timestamp}{random6digits}
+     * Example: PAY1728234567891234567
      */
     private String generatePaymentNumber() {
-        return "PAY" + System.currentTimeMillis();
+        long timestamp = System.currentTimeMillis();
+        int random = new Random().nextInt(900000) + 100000; // 6-digit random number (100000-999999)
+        return "PAY" + timestamp + random;
     }
 }

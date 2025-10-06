@@ -96,9 +96,16 @@ export default function ShopProfilePage() {
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const getImageUrl = (url: string) => {
+    if (url.startsWith('/')) {
+      return `http://localhost:8080/api${url}`;
+    }
+    return url;
+  };
+
   const getProductImage = (product: Product) => {
     if (product.images && product.images.length > 0) {
-      return product.images[0].url;
+      return getImageUrl(product.images[0].url);
     }
     return 'https://via.placeholder.com/400x400?text=No+Image';
   };

@@ -1,11 +1,14 @@
 package com.ecommerce.EcommerceApplication.service.impl;
 
+import com.ecommerce.EcommerceApplication.config.AppConfig;
 import com.ecommerce.EcommerceApplication.dto.*;
 import com.ecommerce.EcommerceApplication.entity.ChatMessage;
 import com.ecommerce.EcommerceApplication.entity.ChatRoom;
+import com.ecommerce.EcommerceApplication.entity.Shop;
 import com.ecommerce.EcommerceApplication.model.User;
 import com.ecommerce.EcommerceApplication.repository.ChatMessageRepository;
 import com.ecommerce.EcommerceApplication.repository.ChatRoomRepository;
+import com.ecommerce.EcommerceApplication.repository.ShopRepository;
 import com.ecommerce.EcommerceApplication.repository.UserRepository;
 import com.ecommerce.EcommerceApplication.service.ChatService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -24,12 +27,16 @@ public class ChatServiceImpl implements ChatService {
     private final ChatRoomRepository roomRepo;
     private final ChatMessageRepository msgRepo;
     private final UserRepository userRepo;
+    private final ShopRepository shopRepo;
+    private final AppConfig appConfig;
     private final ObjectMapper om = new ObjectMapper();
 
-    public ChatServiceImpl(ChatRoomRepository roomRepo, ChatMessageRepository msgRepo, UserRepository userRepo) {
+    public ChatServiceImpl(ChatRoomRepository roomRepo, ChatMessageRepository msgRepo, UserRepository userRepo, ShopRepository shopRepo, AppConfig appConfig) {
         this.roomRepo = roomRepo;
         this.msgRepo = msgRepo;
         this.userRepo = userRepo;
+        this.shopRepo = shopRepo;
+        this.appConfig = appConfig;
     }
 
     @Override
@@ -115,17 +122,43 @@ public class ChatServiceImpl implements ChatService {
 
         // Add sender username and profile image
         if (m.getSenderUserId() != null) {
-            userRepo.findById(m.getSenderUserId()).ifPresent(user -> {
-                d.senderUsername = user.getUsername();
+            // If sender is SELLER, show shop name instead of username
+            if ("SELLER".equalsIgnoreCase(m.getSenderRole())) {
+                // Get shop name from room's shopId
+                roomRepo.findById(m.getRoomId()).ifPresent(room -> {
+                    shopRepo.findById(room.getShopId()).ifPresent(shop -> {
+                        d.senderUsername = shop.getName();
+                        
+                        // Use shop logo as profile image if available
+                        if (shop.getLogoUrl() != null && !shop.getLogoUrl().isEmpty()) {
+                            d.senderProfileImage = appConfig.buildFileUrl(shop.getLogoUrl());
+                        }
+                    });
+                });
+            } else {
+                // For BUYER, show user's full name (firstName + lastName) and profile image
+                userRepo.findById(m.getSenderUserId()).ifPresent(user -> {
+                    // Build full name from firstName and lastName
+                    String fullName = "";
+                    if (user.getFirstName() != null && !user.getFirstName().isEmpty()) {
+                        fullName = user.getFirstName();
+                        if (user.getLastName() != null && !user.getLastName().isEmpty()) {
+                            fullName += " " + user.getLastName();
+                        }
+                    } else if (user.getLastName() != null && !user.getLastName().isEmpty()) {
+                        fullName = user.getLastName();
+                    } else {
+                        // Fallback to username if no name available
+                        fullName = user.getUsername();
+                    }
+                    d.senderUsername = fullName;
 
-                // Add user profile image with full URL
-                if (user.getProfileImage() != null && !user.getProfileImage().isEmpty()) {
-                    String imageUrl = user.getProfileImage();
-                    d.senderProfileImage = imageUrl.startsWith("http")
-                        ? imageUrl
-                        : "http://localhost:8080/api" + imageUrl;
-                }
-            });
+                    // Add user profile image with full URL
+                    if (user.getProfileImage() != null && !user.getProfileImage().isEmpty()) {
+                        d.senderProfileImage = appConfig.buildFileUrl(user.getProfileImage());
+                    }
+                });
+            }
         }
 
         try {

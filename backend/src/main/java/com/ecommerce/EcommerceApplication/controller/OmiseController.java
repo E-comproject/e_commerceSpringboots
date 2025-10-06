@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import com.ecommerce.EcommerceApplication.config.AppConfig;
 import com.ecommerce.EcommerceApplication.config.OmiseConfig;
 import com.ecommerce.EcommerceApplication.dto.OmiseCreateChargeReq;
 import com.ecommerce.EcommerceApplication.dto.OmiseWebhookEvent;
@@ -25,7 +26,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/payments/omise")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+@CrossOrigin(origins = "${app.cors.allowed-origins}")
 public class OmiseController {
 
     private static final Logger logger = LoggerFactory.getLogger(OmiseController.class);
@@ -33,13 +34,16 @@ public class OmiseController {
     private final OmisePaymentGatewayService omisePaymentGatewayService;
     private final PaymentService paymentService;
     private final OmiseConfig omiseConfig;
+    private final AppConfig appConfig;
 
     public OmiseController(OmisePaymentGatewayService omisePaymentGatewayService,
                           PaymentService paymentService,
-                          OmiseConfig omiseConfig) {
+                          OmiseConfig omiseConfig,
+                          AppConfig appConfig) {
         this.omisePaymentGatewayService = omisePaymentGatewayService;
         this.paymentService = paymentService;
         this.omiseConfig = omiseConfig;
+        this.appConfig = appConfig;
     }
 
     /**
@@ -110,7 +114,7 @@ public class OmiseController {
                         req.bankCode = methodName.substring(methodName.lastIndexOf("_") + 1).toLowerCase();
                     }
                     // Set return URI to redirect back after payment
-                    String returnUri = "http://localhost:3000/payment/callback?order_id=" + req.orderId;
+                    String returnUri = appConfig.getFrontendUrl() + "/payment/callback?order_id=" + req.orderId;
                     charge = omisePaymentGatewayService.createInternetBankingCharge(
                         req.amount, req.currency, description, req.bankCode, returnUri, metadata
                     );

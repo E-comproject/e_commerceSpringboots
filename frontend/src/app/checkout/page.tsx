@@ -26,6 +26,7 @@ import {
   PaymentMethodType,
   CreditCardForm,
   PromptPayQR,
+  TrueMoneyWallet,
   InternetBankingSelect,
 } from '@/components/payment';
 
@@ -411,6 +412,43 @@ export default function CheckoutPage() {
     }
   };
 
+  // TrueMoney Wallet Flow - Create order when user submits phone number
+  const handleTrueMoneyPhoneSubmit = async (phoneNumber: string) => {
+    if (!validateStep1()) {
+      setCurrentStep(1);
+      throw new Error('กรุณากรอกข้อมูลที่อยู่จัดส่งให้ครบถ้วน');
+    }
+
+    try {
+      setSubmitting(true);
+      setError('');
+
+      // Create order first
+      const checkoutData = {
+        shippingAddressJson: JSON.stringify(shippingAddress),
+        billingAddressJson: JSON.stringify(shippingAddress),
+        shippingFee: calculateShipping(),
+        taxAmount: 0,
+        notes: notes.trim() || undefined,
+      };
+
+      const orderResponse = await api.post('/orders/checkout', checkoutData);
+      const createdOrderId = orderResponse.data.id;
+
+      // Set orderId so TrueMoney component can create charge
+      setOrderId(createdOrderId);
+      
+      // Now TrueMoney component will automatically create charge with the orderId
+    } catch (err: any) {
+      console.error('Failed to create order:', err);
+      const errorMessage = err.response?.data?.message || 'ไม่สามารถสร้างคำสั่งซื้อได้';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // Main order placement handler
   const handlePlaceOrder = async () => {
     if (paymentMethod === 'COD') {
@@ -418,6 +456,7 @@ export default function CheckoutPage() {
     } else if (paymentMethod === 'OMISE_PROMPTPAY') {
       await handlePromptPayCheckout();
     }
+    // TrueMoney: Order will be created when user submits phone number
     // Internet Banking: No need to create order here, it will be created when bank is selected
     // Credit card is handled directly by CreditCardForm callback
   };
@@ -784,6 +823,22 @@ export default function CheckoutPage() {
                   />
                 )}
 
+                {paymentMethod === 'OMISE_TRUEMONEY' && (
+                  <TrueMoneyWallet
+                    amount={calculateTotal()}
+                    orderId={orderId}
+                    onPhoneNumberSubmit={handleTrueMoneyPhoneSubmit}
+                    onPaymentComplete={() => {
+                      if (orderId) {
+                        router.push(`/orders/${orderId}?success=true`);
+                      }
+                    }}
+                    onPaymentFailed={(error) => {
+                      setError(error);
+                    }}
+                  />
+                )}
+
                 {paymentMethod === 'OMISE_INTERNET_BANKING' && (
                   <InternetBankingSelect
                     amount={calculateTotal()}
@@ -935,9 +990,11 @@ export default function CheckoutPage() {
                 <>
                   {/* Hide Next button in specific cases:
                       1. PromptPay: Order created, waiting for payment (has orderId)
-                      2. Internet Banking: User must select bank, not go to step 3 */}
+                      2. TrueMoney: Always show form in step 2, no next button
+                      3. Internet Banking: User must select bank, not go to step 3 */}
                   {!(
                     (paymentMethod === 'OMISE_PROMPTPAY' && orderId) ||
+                    paymentMethod === 'OMISE_TRUEMONEY' ||
                     paymentMethod === 'OMISE_INTERNET_BANKING'
                   ) && (
                     <button
@@ -952,10 +1009,13 @@ export default function CheckoutPage() {
               ) : (
                 <>
                   {/* Show submit button only for COD and PromptPay (not created yet)
+                      TrueMoney: Has form in step 2, no submit button in step 3
                       Internet Banking: No submit button, user selects bank directly in step 2 */}
                   {!(
                     (paymentMethod === 'OMISE_PROMPTPAY' && orderId)
-                  ) && paymentMethod !== 'OMISE_INTERNET_BANKING' && (
+                  ) && 
+                  paymentMethod !== 'OMISE_TRUEMONEY' &&
+                  paymentMethod !== 'OMISE_INTERNET_BANKING' && (
                     <button
                       onClick={handlePlaceOrder}
                       disabled={submitting}

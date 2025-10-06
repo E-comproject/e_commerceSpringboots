@@ -1139,7 +1139,7 @@ export default function ProductDetailPage() {
                       <img
                         src={
                           relatedProduct.images && relatedProduct.images.length > 0
-                            ? relatedProduct.images[0].url
+                            ? getImageUrl(relatedProduct.images[0].url)
                             : 'https://via.placeholder.com/400x400?text=No+Image'
                         }
                         alt={relatedProduct.name}

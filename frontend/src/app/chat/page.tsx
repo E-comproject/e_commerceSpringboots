@@ -14,6 +14,7 @@ import {
   Loader2
 } from 'lucide-react';
 import api from '@/lib/api';
+import { hasValidImageSrc } from '@/lib/utils';
 
 function ChatPageContent() {
   const router = useRouter();
@@ -181,7 +182,7 @@ function ChatPageContent() {
                         <Store className="h-5 w-5 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 truncate">
+                        <p className="text-sm font-medium text-gray-900 truncate">
                           {shopNames[room.shopId] || `Shop #${room.shopId}`}
                         </p>
                         {room.orderId && (
@@ -219,7 +220,7 @@ function ChatPageContent() {
                     <Store className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">
+                    <h3 className="text-base font-medium text-gray-900">
                       {shopNames[activeRoom?.shopId || 0] || 'กำลังโหลด...'}
                     </h3>
                     {activeRoom?.orderId && (
@@ -253,10 +254,10 @@ function ChatPageContent() {
                         key={msg.id}
                         className={`flex ${isMe ? 'justify-end' : 'justify-start'} gap-2`}
                       >
-                        {/* Profile Image - Left side for others */}
+                        {/* Profile Image - Left side for others only */}
                         {!isMe && (
                           <div className="flex-shrink-0">
-                            {msg.senderProfileImage ? (
+                            {hasValidImageSrc(msg.senderProfileImage) ? (
                               <img
                                 src={msg.senderProfileImage}
                                 alt={msg.senderUsername || 'User'}
@@ -273,7 +274,7 @@ function ChatPageContent() {
                         <div className="flex flex-col">
                           {/* Username */}
                           {!isMe && msg.senderUsername && (
-                            <p className="text-xs text-gray-600 mb-1 px-1">{msg.senderUsername}</p>
+                            <p className="text-xs text-gray-500 mb-1 px-1 font-normal">{msg.senderUsername}</p>
                           )}
 
                           <div
@@ -298,23 +299,6 @@ function ChatPageContent() {
                             </p>
                           </div>
                         </div>
-
-                        {/* Profile Image - Right side for me */}
-                        {isMe && (
-                          <div className="flex-shrink-0">
-                            {user.profileImage ? (
-                              <img
-                                src={user.profileImage}
-                                alt={user.username}
-                                className="w-8 h-8 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                                {user.username?.[0]?.toUpperCase() || 'U'}
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
                     );
                   })

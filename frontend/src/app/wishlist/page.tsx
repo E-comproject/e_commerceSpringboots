@@ -14,6 +14,13 @@ export default function WishlistPage() {
   const [loading, setLoading] = useState(true);
   const [removing, setRemoving] = useState<number | null>(null);
 
+  const getImageUrl = (url: string) => {
+    if (url.startsWith('/')) {
+      return `http://localhost:8080/api${url}`;
+    }
+    return url;
+  };
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
@@ -119,7 +126,7 @@ export default function WishlistPage() {
                 >
                   {item.product.images && item.product.images.length > 0 ? (
                     <Image
-                      src={item.product.images[0].url}
+                      src={getImageUrl(item.product.images[0].url)}
                       alt={item.product.name}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-300"

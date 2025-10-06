@@ -1,5 +1,7 @@
 package com.ecommerce.EcommerceApplication.controller;
 
+import com.ecommerce.EcommerceApplication.config.AppConfig;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,8 +17,11 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/files")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "${app.cors.allowed-origins}")
 public class FileUploadController {
+    
+    @Autowired
+    private AppConfig appConfig;
 
     private static final String UPLOAD_DIR_CHAT = "uploads/chat/";
     private static final String UPLOAD_DIR_PRODUCTS = "uploads/products/";
@@ -168,8 +173,9 @@ public class FileUploadController {
             Path filePath = uploadPath.resolve(uniqueFilename);
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-            // Return file URL
-            String fileUrl = "/files/" + type + "s/" + uniqueFilename;
+            // Return full file URL (including domain and /api prefix)
+            String relativePath = "files/" + type + "s/" + uniqueFilename;
+            String fileUrl = appConfig.buildFileUrl(relativePath);
 
             return ResponseEntity.ok(Map.of(
                 "url", fileUrl,

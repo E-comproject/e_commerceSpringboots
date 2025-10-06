@@ -51,7 +51,8 @@ CREATE DATABASE ecommerce_prod;
 cd backend
 
 # Development mode
-mvn spring-boot:run -Dspring.profiles.active=dev
+
+
 
 # หรือ Production mode
 mvn spring-boot:run -Dspring.profiles.active=prod

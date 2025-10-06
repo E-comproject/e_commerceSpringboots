@@ -5,6 +5,7 @@ import '@/styles/globals/globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import Navigation from '@/components/Navigation'
 import OmiseScript from '@/components/OmiseScript'
+import DemoBanner from '@/components/DemoBanner'
 import { usePathname } from 'next/navigation'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -27,6 +28,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <OmiseScript />
+          <DemoBanner />
           {!isAdminRoute && <Navigation />}
           {children}
         </AuthProvider>

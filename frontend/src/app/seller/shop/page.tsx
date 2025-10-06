@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useShop } from '@/contexts/ShopContext';
-import { Store, Edit, Save, X, Upload, AlertCircle, CheckCircle } from 'lucide-react';
+import { Store, Edit, Save, X, Upload, AlertCircle, CheckCircle, Image as ImageIcon } from 'lucide-react';
+import api from '@/lib/api';
 
 export default function ShopManagementPage() {
   const router = useRouter();
@@ -17,6 +18,8 @@ export default function ShopManagementPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   // Update form data when shop loads
   useState(() => {
@@ -78,6 +81,49 @@ export default function ShopManagementPage() {
     });
     setIsEditing(false);
     setError('');
+    setLogoPreview(null);
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('กรุณาอัปโหลดไฟล์รูปภาพเท่านั้น');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('ขนาดไฟล์ต้องไม่เกิน 5MB');
+      return;
+    }
+
+    setUploadingLogo(true);
+    setError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await api.post('/files/upload/shop', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const imageUrl = response.data.url;
+      setFormData(prev => ({ ...prev, logoUrl: imageUrl }));
+      setLogoPreview(imageUrl);
+    } catch (err: any) {
+      setError(
+        err.response?.data?.error ||
+        'การอัปโหลดรูปภาพล้มเหลว กรุณาลองใหม่อีกครั้ง'
+      );
+    } finally {
+      setUploadingLogo(false);
+    }
   };
 
   return (
@@ -170,36 +216,69 @@ export default function ShopManagementPage() {
             )}
           </div>
 
-          {/* Logo URL */}
+          {/* Logo Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               โลโก้ร้านค้า
             </label>
             {isEditing ? (
               <>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Upload className="h-5 w-5 text-gray-400" />
+                <div className="space-y-3">
+                  {/* File Upload Button */}
+                  <div>
+                    <input
+                      type="file"
+                      id="logo-upload"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                      disabled={uploadingLogo}
+                    />
+                    <label
+                      htmlFor="logo-upload"
+                      className={`inline-flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition ${
+                        uploadingLogo ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      {uploadingLogo ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                          <span className="text-sm text-gray-600">กำลังอัปโหลด...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ImageIcon className="h-5 w-5 text-gray-500" />
+                          <span className="text-sm text-gray-600">เลือกรูปภาพ</span>
+                        </>
+                      )}
+                    </label>
+                    <p className="mt-1 text-xs text-gray-500">รองรับไฟล์ JPG, PNG, GIF (ไม่เกิน 5MB)</p>
                   </div>
-                  <input
-                    type="url"
-                    name="logoUrl"
-                    value={formData.logoUrl}
-                    onChange={handleChange}
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                    placeholder="https://example.com/logo.png"
-                  />
+
+                  {/* Preview */}
+                  {(logoPreview || formData.logoUrl) && (
+                    <div className="relative inline-block">
+                      <img
+                        src={logoPreview || formData.logoUrl}
+                        alt="Logo preview"
+                        className="h-32 w-32 object-cover rounded-lg border-2 border-gray-300 shadow-md"
+                        onError={(e) => {
+                          e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect width="128" height="128" fill="%23e5e7eb"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%239ca3af" font-family="sans-serif" font-size="14">ไม่สามารถโหลดรูป</text></svg>';
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, logoUrl: '' }));
+                          setLogoPreview(null);
+                        }}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-lg"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-                {formData.logoUrl && (
-                  <img
-                    src={formData.logoUrl}
-                    alt="Logo preview"
-                    className="mt-3 h-24 w-24 object-cover rounded-lg border border-gray-300"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                )}
               </>
             ) : (
               <>
@@ -207,13 +286,18 @@ export default function ShopManagementPage() {
                   <img
                     src={shop.logoUrl}
                     alt={shop.name}
-                    className="h-24 w-24 object-cover rounded-lg border border-gray-300"
+                    className="h-32 w-32 object-cover rounded-lg border-2 border-gray-300 shadow-md"
                     onError={(e) => {
-                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect width="128" height="128" fill="%23e5e7eb"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%239ca3af" font-family="sans-serif" font-size="14">ไม่สามารถโหลดรูป</text></svg>';
                     }}
                   />
                 ) : (
-                  <p className="text-gray-500">ไม่มีโลโก้</p>
+                  <div className="h-32 w-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
+                    <div className="text-center">
+                      <ImageIcon className="h-8 w-8 text-gray-400 mx-auto mb-1" />
+                      <p className="text-xs text-gray-500">ไม่มีโลโก้</p>
+                    </div>
+                  </div>
                 )}
               </>
             )}

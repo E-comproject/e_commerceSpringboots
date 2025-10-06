@@ -1,5 +1,6 @@
 package com.ecommerce.EcommerceApplication.controller;
 
+import com.ecommerce.EcommerceApplication.config.AppConfig;
 import com.ecommerce.EcommerceApplication.dto.ChangePasswordRequest;
 import com.ecommerce.EcommerceApplication.dto.UpdateMeRequest;
 import com.ecommerce.EcommerceApplication.model.User;
@@ -17,6 +18,7 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
+    private final AppConfig appConfig;
 
     @GetMapping("/me")
     public ResponseEntity<?> me(@AuthenticationPrincipal Long userId) {
@@ -24,6 +26,13 @@ public class UserController {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
         User u = userService.getMe(userId);
+        
+        // Format profile image URL to full URL
+        String profileImageUrl = "";
+        if (u.getProfileImage() != null && !u.getProfileImage().isEmpty()) {
+            profileImageUrl = appConfig.buildFileUrl(u.getProfileImage());
+        }
+        
         return ResponseEntity.ok(Map.of(
                 "id", u.getId(),
                 "username", u.getUsername(),
@@ -32,7 +41,7 @@ public class UserController {
                 "firstName", u.getFirstName() != null ? u.getFirstName() : "",
                 "lastName", u.getLastName() != null ? u.getLastName() : "",
                 "phone", u.getPhone() != null ? u.getPhone() : "",
-                "profileImage", u.getProfileImage() != null ? u.getProfileImage() : ""
+                "profileImage", profileImageUrl
         ));
     }
 
@@ -43,6 +52,13 @@ public class UserController {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
         var u = userService.updateUsername(userId, req);
+        
+        // Format profile image URL to full URL
+        String profileImageUrl = "";
+        if (u.getProfileImage() != null && !u.getProfileImage().isEmpty()) {
+            profileImageUrl = appConfig.buildFileUrl(u.getProfileImage());
+        }
+        
         return ResponseEntity.ok(Map.of(
                 "id", u.getId(),
                 "username", u.getUsername(),
@@ -51,7 +67,7 @@ public class UserController {
                 "firstName", u.getFirstName() != null ? u.getFirstName() : "",
                 "lastName", u.getLastName() != null ? u.getLastName() : "",
                 "phone", u.getPhone() != null ? u.getPhone() : "",
-                "profileImage", u.getProfileImage() != null ? u.getProfileImage() : ""
+                "profileImage", profileImageUrl
         ));
     }
 

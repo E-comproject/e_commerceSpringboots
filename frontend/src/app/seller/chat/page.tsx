@@ -13,6 +13,7 @@ import {
   Loader2
 } from 'lucide-react';
 import api from '@/lib/api';
+import { hasValidImageSrc } from '@/lib/utils';
 
 function SellerChatPageContent() {
   const router = useRouter();
@@ -247,7 +248,7 @@ function SellerChatPageContent() {
                         {/* Profile Image - Left side for buyer */}
                         {!isMe && (
                           <div className="flex-shrink-0">
-                            {msg.senderProfileImage ? (
+                            {hasValidImageSrc(msg.senderProfileImage) ? (
                               <img
                                 src={msg.senderProfileImage}
                                 alt={msg.senderUsername || 'User'}
@@ -293,7 +294,7 @@ function SellerChatPageContent() {
                         {/* Profile Image - Right side for seller */}
                         {isMe && (
                           <div className="flex-shrink-0">
-                            {shop.logoUrl ? (
+                            {hasValidImageSrc(shop.logoUrl) ? (
                               <img
                                 src={shop.logoUrl}
                                 alt={shop.name}

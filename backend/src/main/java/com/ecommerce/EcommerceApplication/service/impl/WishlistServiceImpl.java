@@ -1,8 +1,11 @@
 package com.ecommerce.EcommerceApplication.service.impl;
 
+import com.ecommerce.EcommerceApplication.config.AppConfig;
 import com.ecommerce.EcommerceApplication.dto.ProductDto;
+import com.ecommerce.EcommerceApplication.dto.ProductImageDto;
 import com.ecommerce.EcommerceApplication.dto.WishlistDto;
 import com.ecommerce.EcommerceApplication.entity.Product;
+import com.ecommerce.EcommerceApplication.entity.ProductImage;
 import com.ecommerce.EcommerceApplication.entity.Wishlist;
 import com.ecommerce.EcommerceApplication.repository.ProductRepository;
 import com.ecommerce.EcommerceApplication.repository.WishlistRepository;
@@ -13,16 +16,20 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.stream.Collectors;
+
 @Service
 @Transactional
 public class WishlistServiceImpl implements WishlistService {
 
     private final WishlistRepository wishlistRepo;
     private final ProductRepository productRepo;
+    private final AppConfig appConfig;
 
-    public WishlistServiceImpl(WishlistRepository wishlistRepo, ProductRepository productRepo) {
+    public WishlistServiceImpl(WishlistRepository wishlistRepo, ProductRepository productRepo, AppConfig appConfig) {
         this.wishlistRepo = wishlistRepo;
         this.productRepo = productRepo;
+        this.appConfig = appConfig;
     }
 
     @Override
@@ -111,8 +118,21 @@ public class WishlistServiceImpl implements WishlistService {
         dto.shopId = product.getShopId();
         dto.categoryId = product.getCategoryId();
 
-        // TODO: แปลง images และ variants ถ้าจำเป็น
+        // แปลง images และแปลง URL เป็น full URL
+        if (product.getImages() != null && !product.getImages().isEmpty()) {
+            dto.images = product.getImages().stream()
+                .map(this::toImageDto)
+                .collect(Collectors.toList());
+        }
 
+        return dto;
+    }
+
+    private ProductImageDto toImageDto(ProductImage image) {
+        ProductImageDto dto = new ProductImageDto();
+        dto.id = image.getId();
+        dto.url = appConfig.buildFileUrl(image.getUrl());
+        dto.sortOrder = image.getSortOrder();
         return dto;
     }
 }
