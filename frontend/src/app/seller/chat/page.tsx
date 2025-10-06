@@ -242,29 +242,70 @@ function SellerChatPageContent() {
                     return (
                       <div
                         key={msg.id}
-                        className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                        className={`flex ${isMe ? 'justify-end' : 'justify-start'} gap-2`}
                       >
-                        <div
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-                            isMe
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-100 text-gray-900'
-                          }`}
-                        >
-                          <p className="text-sm whitespace-pre-wrap break-words">
-                            {msg.content}
-                          </p>
-                          <p
-                            className={`text-xs mt-1 ${
-                              isMe ? 'text-blue-100' : 'text-gray-500'
+                        {/* Profile Image - Left side for buyer */}
+                        {!isMe && (
+                          <div className="flex-shrink-0">
+                            {msg.senderProfileImage ? (
+                              <img
+                                src={msg.senderProfileImage}
+                                alt={msg.senderUsername || 'User'}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                {msg.senderUsername?.[0]?.toUpperCase() || 'U'}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex flex-col">
+                          {/* Username */}
+                          {!isMe && msg.senderUsername && (
+                            <p className="text-xs text-gray-600 mb-1 px-1">{msg.senderUsername}</p>
+                          )}
+
+                          <div
+                            className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                              isMe
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-900'
                             }`}
                           >
-                            {new Date(msg.createdAt).toLocaleTimeString('th-TH', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </p>
+                            <p className="text-sm whitespace-pre-wrap break-words">
+                              {msg.content}
+                            </p>
+                            <p
+                              className={`text-xs mt-1 ${
+                                isMe ? 'text-blue-100' : 'text-gray-500'
+                              }`}
+                            >
+                              {new Date(msg.createdAt).toLocaleTimeString('th-TH', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </p>
+                          </div>
                         </div>
+
+                        {/* Profile Image - Right side for seller */}
+                        {isMe && (
+                          <div className="flex-shrink-0">
+                            {shop.logoUrl ? (
+                              <img
+                                src={shop.logoUrl}
+                                alt={shop.name}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                {shop.name?.[0]?.toUpperCase() || 'S'}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })

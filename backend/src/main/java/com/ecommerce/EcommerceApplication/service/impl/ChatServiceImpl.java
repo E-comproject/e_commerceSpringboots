@@ -3,8 +3,10 @@ package com.ecommerce.EcommerceApplication.service.impl;
 import com.ecommerce.EcommerceApplication.dto.*;
 import com.ecommerce.EcommerceApplication.entity.ChatMessage;
 import com.ecommerce.EcommerceApplication.entity.ChatRoom;
+import com.ecommerce.EcommerceApplication.model.User;
 import com.ecommerce.EcommerceApplication.repository.ChatMessageRepository;
 import com.ecommerce.EcommerceApplication.repository.ChatRoomRepository;
+import com.ecommerce.EcommerceApplication.repository.UserRepository;
 import com.ecommerce.EcommerceApplication.service.ChatService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,11 +23,13 @@ public class ChatServiceImpl implements ChatService {
 
     private final ChatRoomRepository roomRepo;
     private final ChatMessageRepository msgRepo;
+    private final UserRepository userRepo;
     private final ObjectMapper om = new ObjectMapper();
 
-    public ChatServiceImpl(ChatRoomRepository roomRepo, ChatMessageRepository msgRepo) {
+    public ChatServiceImpl(ChatRoomRepository roomRepo, ChatMessageRepository msgRepo, UserRepository userRepo) {
         this.roomRepo = roomRepo;
         this.msgRepo = msgRepo;
+        this.userRepo = userRepo;
     }
 
     @Override
@@ -108,6 +112,22 @@ public class ChatServiceImpl implements ChatService {
         ChatMessageDto d = new ChatMessageDto();
         d.id = m.getId(); d.roomId = m.getRoomId(); d.senderUserId = m.getSenderUserId();
         d.senderRole = m.getSenderRole(); d.content = m.getContent(); d.isRead = Boolean.TRUE.equals(m.getIsRead()); d.createdAt = m.getCreatedAt();
+
+        // Add sender username and profile image
+        if (m.getSenderUserId() != null) {
+            userRepo.findById(m.getSenderUserId()).ifPresent(user -> {
+                d.senderUsername = user.getUsername();
+
+                // Add user profile image with full URL
+                if (user.getProfileImage() != null && !user.getProfileImage().isEmpty()) {
+                    String imageUrl = user.getProfileImage();
+                    d.senderProfileImage = imageUrl.startsWith("http")
+                        ? imageUrl
+                        : "http://localhost:8080/api" + imageUrl;
+                }
+            });
+        }
+
         try {
             d.attachments = (m.getAttachments() == null) ? List.of() : om.readValue(m.getAttachments(), new TypeReference<List<String>>() {});
         } catch (Exception e) { d.attachments = List.of(); }
