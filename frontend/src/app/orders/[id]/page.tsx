@@ -75,9 +75,10 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [reviewingProduct, setReviewingProduct] = useState<{ id: number; name: string } | null>(null);
-  const [reviewedProducts, setReviewedProducts] = useState<Set<number>>(new Set());
+  const [reviewingProduct, setReviewingProduct] = useState<{ productId: number; productName: string; orderItemId: number } | null>(null);
+  const [reviewedOrderItems, setReviewedOrderItems] = useState<Set<number>>(new Set());
   const [shopId, setShopId] = useState<number | null>(null);
+  const [confirmingDelivery, setConfirmingDelivery] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -149,6 +150,38 @@ export default function OrderDetailPage() {
     } catch (error) {
       console.error('Failed to create chat room:', error);
       alert('ไม่สามารถเปิดแชทได้ กรุณาลองใหม่อีกครั้ง');
+    }
+  };
+
+  const handleConfirmDelivery = async () => {
+    console.log('🚀 handleConfirmDelivery called');
+    console.log('📦 Order:', order);
+
+    if (!order) {
+      console.error('❌ No order found');
+      return;
+    }
+
+    console.log('✅ Starting delivery confirmation...');
+    setConfirmingDelivery(true);
+    try {
+      const url = `/orders/${order.id}/status?status=DELIVERED`;
+      console.log('📡 Sending PUT request to:', url);
+
+      const response = await api.put(url);
+      console.log('✅ Response:', response);
+
+      alert('ยืนยันรับสินค้าสำเร็จ! ร้านค้าจะดำเนินการปิดงานต่อไป');
+      // Refresh order data
+      await fetchOrder();
+    } catch (error: any) {
+      console.error('❌ Failed to confirm delivery:', error);
+      console.error('❌ Error response:', error.response);
+      const errorMsg = error.response?.data || 'ไม่สามารถยืนยันการรับสินค้าได้';
+      alert(typeof errorMsg === 'string' ? errorMsg : 'ไม่สามารถยืนยันการรับสินค้าได้');
+    } finally {
+      setConfirmingDelivery(false);
+      console.log('🏁 handleConfirmDelivery finished');
     }
   };
 
@@ -284,14 +317,14 @@ export default function OrderDetailPage() {
                       {/* Review Button - Show only for completed/delivered orders */}
                       {(order.status === 'COMPLETED' || order.status === 'DELIVERED') && (
                         <>
-                          {reviewedProducts.has(item.productId) ? (
+                          {reviewedOrderItems.has(item.id) ? (
                             <div className="mt-3 flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
                               <CheckCircle className="h-4 w-4" />
                               รีวิวแล้ว
                             </div>
                           ) : (
                             <button
-                              onClick={() => setReviewingProduct({ id: item.productId, name: item.productName })}
+                              onClick={() => setReviewingProduct({ productId: item.productId, productName: item.productName, orderItemId: item.id })}
                               className="mt-3 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-lg hover:from-yellow-500 hover:to-orange-600 transition text-sm font-medium shadow-md"
                             >
                               <Star className="h-4 w-4" />
@@ -419,6 +452,27 @@ export default function OrderDetailPage() {
 
           {/* Action Buttons */}
           <div className="space-y-3">
+            {/* Confirm Delivery Button - Show only for SHIPPED status */}
+            {order.status === 'SHIPPED' && (
+              <button
+                onClick={handleConfirmDelivery}
+                disabled={confirmingDelivery}
+                className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition font-semibold flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {confirmingDelivery ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    กำลังดำเนินการ...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-5 w-5" />
+                    ยืนยันรับสินค้าแล้ว
+                  </>
+                )}
+              </button>
+            )}
+
             {/* Chat Button */}
             {shopId && (
               <button
@@ -451,13 +505,13 @@ export default function OrderDetailPage() {
       {/* Review Modal */}
       {reviewingProduct && (
         <ReviewModal
-          productId={reviewingProduct.id}
-          productName={reviewingProduct.name}
-          orderId={order.id}
+          productId={reviewingProduct.productId}
+          productName={reviewingProduct.productName}
+          orderItemId={reviewingProduct.orderItemId}
           onClose={() => setReviewingProduct(null)}
           onSuccess={() => {
-            // Mark product as reviewed
-            setReviewedProducts(prev => new Set(prev).add(reviewingProduct.id));
+            // Mark order item as reviewed (using orderItemId instead of productId)
+            setReviewedOrderItems(prev => new Set(prev).add(reviewingProduct.orderItemId));
             alert('ขอบคุณสำหรับรีวิว! ⭐');
           }}
         />

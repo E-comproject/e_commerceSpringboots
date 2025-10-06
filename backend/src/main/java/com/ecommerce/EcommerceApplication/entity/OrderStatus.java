@@ -89,7 +89,7 @@ public enum OrderStatus {
         // From READY_TO_SHIP
         transitions.put(READY_TO_SHIP, Set.of(SHIPPED, ON_HOLD, CANCELLED));
 
-        // From SHIPPED
+        // From SHIPPED (allow DELIVERED for customer confirmation)
         transitions.put(SHIPPED, Set.of(OUT_FOR_DELIVERY, DELIVERED, RETURNED));
 
         // From OUT_FOR_DELIVERY

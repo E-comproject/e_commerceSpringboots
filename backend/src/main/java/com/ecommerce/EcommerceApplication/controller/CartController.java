@@ -205,10 +205,13 @@ public class CartController {
                 : e.getPriceSnapshot().multiply(BigDecimal.valueOf(e.getQuantity()));
 
         // Add product image (prefer variant image if exists, otherwise product image)
+        // Return full URL for frontend Image component
         if (e.hasVariant() && e.getVariant() != null && !e.getVariant().getImages().isEmpty()) {
-            d.productImage = e.getVariant().getImages().get(0).getImageUrl();
+            String imageUrl = e.getVariant().getImages().get(0).getImageUrl();
+            d.productImage = imageUrl.startsWith("http") ? imageUrl : "http://localhost:8080/api" + imageUrl;
         } else if (e.getProduct() != null && !e.getProduct().getImages().isEmpty()) {
-            d.productImage = e.getProduct().getImages().get(0).getUrl();  // ProductImage uses getUrl()
+            String imageUrl = e.getProduct().getImages().get(0).getUrl();  // ProductImage uses getUrl()
+            d.productImage = imageUrl.startsWith("http") ? imageUrl : "http://localhost:8080/api" + imageUrl;
         }
 
         // Add stock information

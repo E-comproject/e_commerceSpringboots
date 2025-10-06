@@ -52,7 +52,7 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional(readOnly = true)
     public List<CartItem> listItems(Long cartId) {
-        return cartItemRepository.findByCartId(cartId);
+        return cartItemRepository.findByCartIdWithDetails(cartId);
     }
 
     @Override

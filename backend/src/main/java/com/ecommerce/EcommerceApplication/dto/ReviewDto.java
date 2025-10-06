@@ -9,6 +9,7 @@ public class ReviewDto {
     public String productName;    // For seller to see product name
     public Long userId;
     public String userName;        // For seller to see customer name
+    public String userProfileImage; // User profile image URL
     public Long orderItemId;
     public Integer rating;
     public String title;

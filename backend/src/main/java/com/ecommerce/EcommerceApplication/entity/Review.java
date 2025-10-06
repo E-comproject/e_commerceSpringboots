@@ -17,7 +17,12 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "reviews")
+@Table(name = "reviews", uniqueConstraints = {
+    @jakarta.persistence.UniqueConstraint(
+        name = "uk_review_user_order_item",
+        columnNames = {"user_id", "order_item_id"}
+    )
+})
 public class Review {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

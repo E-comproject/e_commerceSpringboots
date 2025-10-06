@@ -479,21 +479,9 @@ export default function OrdersPage() {
                       )}
 
                       {order.status === 'SHIPPED' && (
-                        <button
-                          onClick={() => handleUpdateOrderStatus(order.id, 'OUT_FOR_DELIVERY')}
-                          className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium"
-                        >
-                          อยู่ระหว่างจัดส่ง
-                        </button>
-                      )}
-
-                      {order.status === 'OUT_FOR_DELIVERY' && (
-                        <button
-                          onClick={() => handleUpdateOrderStatus(order.id, 'DELIVERED')}
-                          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium"
-                        >
-                          จัดส่งสำเร็จ
-                        </button>
+                        <div className="text-sm text-gray-600 italic">
+                          รอลูกค้ายืนยันรับสินค้า
+                        </div>
                       )}
 
                       {order.status === 'DELIVERED' && (
@@ -501,7 +489,7 @@ export default function OrdersPage() {
                           onClick={() => handleUpdateOrderStatus(order.id, 'COMPLETED')}
                           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
                         >
-                          ปิดคำสั่งซื้อ
+                          ✓ ปิดงาน (เสร็จสิ้น)
                         </button>
                       )}
 

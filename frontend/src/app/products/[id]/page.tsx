@@ -33,6 +33,7 @@ interface Review {
   id: number;
   userId: number;
   userName?: string;
+  userProfileImage?: string;
   rating: number;
   comment?: string;
   createdAt: string;
@@ -944,9 +945,17 @@ export default function ProductDetailPage() {
                       <div key={review.id} className="border-b border-gray-200 pb-6 last:border-0">
                         {/* Reviewer Info */}
                         <div className="flex items-start gap-4 mb-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
-                            {review.userName?.[0]?.toUpperCase() || 'U'}
-                          </div>
+                          {review.userProfileImage ? (
+                            <img
+                              src={review.userProfileImage}
+                              alt={review.userName || 'User'}
+                              className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
+                              {review.userName?.[0]?.toUpperCase() || 'U'}
+                            </div>
+                          )}
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <p className="font-semibold text-gray-900">{review.userName || 'ผู้ใช้'}</p>

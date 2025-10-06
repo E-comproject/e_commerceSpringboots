@@ -48,6 +48,7 @@ public class ReviewServiceImpl implements ReviewService {
     public ReviewDto create(Long userId, ReviewCreateReq req) {
         // Validate input
         if (req.productId == null) throw new IllegalArgumentException("productId is required");
+        if (req.orderItemId == null) throw new IllegalArgumentException("orderItemId is required - reviews must be linked to an order");
         if (req.rating == null || req.rating < 1 || req.rating > 5)
             throw new IllegalArgumentException("rating must be between 1 and 5");
 
@@ -55,24 +56,13 @@ public class ReviewServiceImpl implements ReviewService {
         Product product = productRepo.findById(req.productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
 
-        // Check for duplicate reviews
-        if (req.orderItemId != null) {
-            // ตรวจสอบว่าเคยรีวิว order_item_id นี้แล้วหรือไม่
-            if (reviewRepo.existsByUserIdAndOrderItemId(userId, req.orderItemId)) {
-                throw new ReviewAlreadyExistsException("You have already reviewed this order item");
-            }
-        } else {
-            // ตรวจสอบว่าเคยรีวิวสินค้านี้แล้วหรือไม่ (กรณีไม่มี orderItemId)
-            if (reviewRepo.existsByUserIdAndProduct_Id(userId, req.productId)) {
-                throw new ReviewAlreadyExistsException("You have already reviewed this product");
-            }
+        // Check for duplicate reviews - one review per order item
+        if (reviewRepo.existsByUserIdAndOrderItemId(userId, req.orderItemId)) {
+            throw new ReviewAlreadyExistsException("You have already reviewed this order item");
         }
 
-        // Verify purchase if orderItemId is provided
-        boolean verified = false;
-        if (req.orderItemId != null) {
-            verified = orderItemRepo.isOrderItemOwned(req.orderItemId, req.productId, userId);
-        }
+        // Verify purchase - ensure user actually purchased this item
+        boolean verified = orderItemRepo.isOrderItemOwned(req.orderItemId, req.productId, userId);
 
         // Create review
         Review review = new Review();
@@ -157,10 +147,18 @@ public class ReviewServiceImpl implements ReviewService {
 
         dto.userId = review.getUserId();
 
-        // Add user name
+        // Add user name and profile image
         if (review.getUserId() != null) {
             userRepo.findById(review.getUserId()).ifPresent(user -> {
                 dto.userName = user.getUsername();
+
+                // Add user profile image with full URL
+                if (user.getProfileImage() != null && !user.getProfileImage().isEmpty()) {
+                    String imageUrl = user.getProfileImage();
+                    dto.userProfileImage = imageUrl.startsWith("http")
+                        ? imageUrl
+                        : "http://localhost:8080/api" + imageUrl;
+                }
             });
         }
 

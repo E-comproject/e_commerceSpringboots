@@ -7,12 +7,12 @@ import api from '@/lib/api';
 interface ReviewModalProps {
   productId: number;
   productName: string;
-  orderId?: number;
+  orderItemId: number;
   onClose: () => void;
   onSuccess?: () => void;
 }
 
-export default function ReviewModal({ productId, productName, orderId, onClose, onSuccess }: ReviewModalProps) {
+export default function ReviewModal({ productId, productName, orderItemId, onClose, onSuccess }: ReviewModalProps) {
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -33,6 +33,7 @@ export default function ReviewModal({ productId, productName, orderId, onClose, 
     try {
       await api.post('/reviews', {
         productId,
+        orderItemId,
         rating,
         comment: comment.trim() || undefined,
       });
@@ -46,7 +47,7 @@ export default function ReviewModal({ productId, productName, orderId, onClose, 
 
       // Handle 409 Conflict - Already reviewed
       if (error.response?.status === 409) {
-        setError('คุณได้รีวิวสินค้านี้ไปแล้ว ไม่สามารถรีวิวซ้ำได้');
+        setError('คุณได้รีวิวสินค้านี้จากคำสั่งซื้อนี้แล้ว');
       } else {
         const errorMsg = error.response?.data || 'ไม่สามารถส่งรีวิวได้';
         setError(typeof errorMsg === 'string' ? errorMsg : 'ไม่สามารถส่งรีวิวได้');

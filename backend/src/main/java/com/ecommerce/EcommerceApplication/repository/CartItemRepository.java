@@ -4,12 +4,23 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.ecommerce.EcommerceApplication.entity.CartItem;
 
 public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     // อ่านรายการในตะกร้า
     List<CartItem> findByCartId(Long cartId);
+
+    // อ่านรายการพร้อม product, variant สำหรับ cart display
+    // Note: ไม่ fetch images เพราะ Hibernate ไม่รองรับ multiple bag fetch
+    @Query("SELECT DISTINCT ci FROM CartItem ci " +
+           "LEFT JOIN FETCH ci.product p " +
+           "LEFT JOIN FETCH p.shop " +
+           "LEFT JOIN FETCH ci.variant v " +
+           "WHERE ci.cart.id = :cartId")
+    List<CartItem> findByCartIdWithDetails(@Param("cartId") Long cartId);
 
     // ล้างทั้งตะกร้า
     void deleteByCartId(Long cartId);

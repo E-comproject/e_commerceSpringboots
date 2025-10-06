@@ -22,6 +22,7 @@ interface Review {
   id: number;
   userId: number;
   userName?: string;
+  userProfileImage?: string;
   productId: number;
   productName?: string;
   rating: number;
@@ -289,9 +290,17 @@ export default function ReviewsPage() {
                   <div key={review.id} className="p-6 hover:bg-gray-50 transition-colors">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                          {review.userName?.[0] || 'U'}
-                        </div>
+                        {review.userProfileImage ? (
+                          <img
+                            src={review.userProfileImage}
+                            alt={review.userName || 'User'}
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                            {review.userName?.[0] || 'U'}
+                          </div>
+                        )}
                         <div>
                           <div className="flex items-center gap-2 mb-1">
                             <p className="font-semibold text-gray-900">{review.userName}</p>
