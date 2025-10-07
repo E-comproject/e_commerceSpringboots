@@ -22,9 +22,9 @@ ENV UPLOAD_ROOT=/data/uploads
 # คัดลอก JAR
 COPY --from=build /app/target/*.jar app.jar
 
-COPY uploads /data/uploads
+COPY ./uploads/ /data/uploads/
 RUN chown -R spring:spring /data/uploads
-RUN chmod -R 755 /data/uploads
+RUN chmod -R 755 /data/uploads || true
 
 # **อย่า set USER ที่นี่** ต้องคงเป็น root เพื่อแก้สิทธิ์หลัง mount
 EXPOSE 8080
