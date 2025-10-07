@@ -24,7 +24,7 @@ RUN mkdir -p ${UPLOAD_ROOT} && chown -R spring:spring /data
 COPY --from=build /app/target/*.jar app.jar
 
 # ประกาศ volume (ให้ Railway ผูก storage ถาวร)
-VOLUME ["/data"]
+# VOLUME ["/data"]
 
 # ใช้สิทธิ์ non-root
 USER spring:spring
