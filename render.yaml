@@ -28,14 +28,6 @@ services:
         fromDatabase:
           name: ecommerce-postgres
           property: connectionString
-      - key: DATABASE_USER
-        fromDatabase:
-          name: ecommerce-postgres
-          property: user
-      - key: DATABASE_PASSWORD
-        fromDatabase:
-          name: ecommerce-postgres
-          property: password
       
       # Spring profiles
       - key: SPRING_PROFILES_ACTIVE
