@@ -22,10 +22,10 @@ ENV UPLOAD_ROOT=/data/uploads
 # Copy JAR from build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Copy uploads directory if exists
-COPY ./uploads/ /data/uploads/ 2>/dev/null || true
-RUN chown -R spring:spring /data/uploads 2>/dev/null || true
-RUN chmod -R 755 /data/uploads 2>/dev/null || true
+# Create upload directories (will be overridden by volume mount)
+RUN mkdir -p /data/uploads/products /data/uploads/profiles /data/uploads/shops /data/uploads/chat && \
+    chown -R spring:spring /data && \
+    chmod -R 755 /data
 
 # Expose port
 EXPOSE 8080
