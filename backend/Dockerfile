@@ -10,33 +10,31 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# ติดตั้ง curl สำหรับ healthcheck (ทำก่อนเปลี่ยน user)
-RUN apk add --no-cache curl
+# tools: curl (healthcheck) + su-exec (สลับ user ตอน runtime)
+RUN apk add --no-cache curl su-exec
 
-# สร้าง user แบบ non-root
+# non-root user
 RUN addgroup -S spring && adduser -S spring -G spring
 
-# เตรียมโฟลเดอร์สำหรับอัปโหลดใต้ /data และโอนสิทธิ์ให้ user
+# path อัปโหลด (Railway จะ mount /data มาให้ตอนรัน)
 ENV UPLOAD_ROOT=/data/uploads
-RUN mkdir -p ${UPLOAD_ROOT} && chown -R spring:spring /data
 
 # คัดลอก JAR
 COPY --from=build /app/target/*.jar app.jar
 
-# ประกาศ volume (ให้ Railway ผูก storage ถาวร)
-# VOLUME ["/data"]
-
-# ใช้สิทธิ์ non-root
-USER spring:spring
-
-# เปิดพอร์ต (Railway จะส่ง PORT มาเอง)
+# **อย่า set USER ที่นี่** ต้องคงเป็น root เพื่อแก้สิทธิ์หลัง mount
 EXPOSE 8080
 
-# Healthcheck (แก้ path ตามของแอปคุณ เช่น /api/health หรือ /actuator/health)
-HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+# ให้ตรงกับ context-path ของคุณ (จาก log คือ /api)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=5 \
   CMD curl -fsS http://127.0.0.1:${PORT:-8080}/api/health || exit 1
 
-# รันแอป + สร้างโฟลเดอร์ย่อยตอน runtime
-# ส่งค่า server.port จาก $PORT และส่ง path อัปโหลดให้แอปอ่าน
-CMD sh -c "mkdir -p ${UPLOAD_ROOT}/products ${UPLOAD_ROOT}/profiles ${UPLOAD_ROOT}/shops ${UPLOAD_ROOT}/chat \
-  && java -Dserver.port=${PORT} -Dfile.upload.root=${UPLOAD_ROOT} -jar app.jar"
+# หลัง Railway mount volume แล้ว:
+# 1) chown /data ให้ spring
+# 2) สลับเป็น spring แล้วสร้างโฟลเดอร์ย่อย + รันแอป
+CMD sh -c "\
+  mkdir -p /data && chown -R spring:spring /data && \
+  su-exec spring:spring sh -c '\
+    mkdir -p ${UPLOAD_ROOT}/products ${UPLOAD_ROOT}/profiles ${UPLOAD_ROOT}/shops ${UPLOAD_ROOT}/chat && \
+    java -Dserver.port=${PORT} -Dfile.upload.root=${UPLOAD_ROOT} -jar app.jar' \
+"
