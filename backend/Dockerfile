@@ -34,7 +34,7 @@ EXPOSE 8080
 
 # Healthcheck (แก้ path ตามของแอปคุณ เช่น /api/health หรือ /actuator/health)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:${PORT:-8080}/actuator/health || exit 1
+  CMD curl -fsS http://127.0.0.1:${PORT:-8080}/health || exit 1
 
 # รันแอป + สร้างโฟลเดอร์ย่อยตอน runtime
 # ส่งค่า server.port จาก $PORT และส่ง path อัปโหลดให้แอปอ่าน
