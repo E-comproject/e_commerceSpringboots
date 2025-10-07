@@ -54,6 +54,14 @@ public class SecurityConfig {
                 // H2 console (เฉพาะ dev)
                 .requestMatchers("/h2-console/**").permitAll()
 
+
+                
+
+                .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+
+
+
+
                 // public GET ตัวอย่าง
                 .requestMatchers(HttpMethod.GET, "/shops/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/products/**").permitAll()
