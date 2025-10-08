@@ -32,16 +32,17 @@ export default function LoginPage() {
 
         console.log('👤 User roles:', roles);
 
+        // Use router.push instead of window.location.href to maintain state
         if (roles.includes('ROLE_ADMIN')) {
-          window.location.href = '/admin/dashboard';
+          router.push('/admin/dashboard');
         } else if (roles.includes('ROLE_SELLER')) {
           // Redirect to seller landing page, it will check shop and redirect accordingly
-          window.location.href = '/seller';
+          router.push('/seller');
         } else {
-          window.location.href = '/';
+          router.push('/');
         }
       } else {
-        window.location.href = '/';
+        router.push('/');
       }
     } catch (err: any) {
       setError(
