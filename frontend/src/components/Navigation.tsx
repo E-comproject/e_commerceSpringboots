@@ -28,7 +28,7 @@ export default function Navigation() {
     if (!url) return '';
     if (url.startsWith('http')) return url;
     if (url.startsWith('/')) {
-      return `http://localhost:8080/api${url}`;
+      return `${process.env.NEXT_PUBLIC_API_URL || 'https://e-commercespringboots.onrender.com/api'}${url}`;
     }
     return url;
   };

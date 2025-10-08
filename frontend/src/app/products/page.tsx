@@ -93,7 +93,7 @@ function ProductsContent() {
       const url = product.images[0].url;
       // Add API base URL if the URL is relative
       if (url.startsWith('/')) {
-        return `http://localhost:8080/api${url}`;
+        return `${process.env.NEXT_PUBLIC_API_URL || 'https://e-commercespringboots.onrender.com/api'}${url}`;
       }
       return url;
     }

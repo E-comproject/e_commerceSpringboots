@@ -10,7 +10,8 @@ export default function OmiseScript() {
         clearInterval(checkOmiseLoaded);
 
         // Fetch public key from backend
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/payments/omise/public-key`)
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://e-commercespringboots.onrender.com/api';
+        fetch(`${apiUrl}/payments/omise/public-key`)
           .then(res => res.json())
           .then(data => {
             const publicKey = data.publicKey;
