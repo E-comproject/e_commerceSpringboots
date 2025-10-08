@@ -70,7 +70,7 @@ function SellerChatPageContent() {
   // Fetch buyer names
   useEffect(() => {
     const fetchBuyerNames = async () => {
-      const buyerIds = [...new Set(rooms.map(r => r.buyerUserId))];
+      const buyerIds = Array.from(new Set(rooms.map(r => r.buyerUserId)));
       const names: Record<number, string> = {};
 
       for (const buyerId of buyerIds) {

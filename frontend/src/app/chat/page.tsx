@@ -71,7 +71,7 @@ function ChatPageContent() {
   // Fetch shop names
   useEffect(() => {
     const fetchShopNames = async () => {
-      const shopIds = [...new Set(rooms.map(r => r.shopId))];
+      const shopIds = Array.from(new Set(rooms.map(r => r.shopId)));
       const names: Record<number, string> = {};
 
       for (const shopId of shopIds) {
