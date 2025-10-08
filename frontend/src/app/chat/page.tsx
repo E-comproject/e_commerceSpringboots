@@ -259,7 +259,7 @@ function ChatPageContent() {
                           <div className="flex-shrink-0">
                             {hasValidImageSrc(msg.senderProfileImage) ? (
                               <img
-                                src={msg.senderProfileImage}
+                                src={msg.senderProfileImage || ''}
                                 alt={msg.senderUsername || 'User'}
                                 className="w-8 h-8 rounded-full object-cover"
                               />
