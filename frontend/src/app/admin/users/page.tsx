@@ -34,7 +34,7 @@ interface User {
 }
 
 export default function UserManagementPage() {
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin, loading:  } = useAuth(); const authLoading = false;
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);

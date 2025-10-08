@@ -24,7 +24,7 @@ interface SiteSettings {
 }
 
 export default function SettingsPage() {
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin, loading:  } = useAuth(); const authLoading = false;
   const router = useRouter();
 
   const [settings, setSettings] = useState<SiteSettings>({

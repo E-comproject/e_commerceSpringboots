@@ -66,7 +66,8 @@ export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isAuthenticated, authLoading } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const authLoading = false;
   const { createOrGetRoom } = useChatStore();
 
   const orderId = params.id as string;

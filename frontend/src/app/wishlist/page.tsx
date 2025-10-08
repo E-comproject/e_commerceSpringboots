@@ -9,7 +9,7 @@ import Image from 'next/image';
 
 export default function WishlistPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading:  } = useAuth(); const authLoading = false;
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [removing, setRemoving] = useState<number | null>(null);

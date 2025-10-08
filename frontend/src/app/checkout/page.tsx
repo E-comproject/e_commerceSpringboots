@@ -70,7 +70,8 @@ interface SavedAddress {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { isAuthenticated, authLoading, user } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const authLoading = false; // Remove if not needed
 
   const [currentStep, setCurrentStep] = useState(1);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -112,7 +113,7 @@ export default function CheckoutPage() {
       if (user) {
         setShippingAddress(prev => ({
           ...prev,
-          fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username,
+          fullName: user.username || '',
           email: user.email || '',
         }));
       }
@@ -813,7 +814,7 @@ export default function CheckoutPage() {
                 {paymentMethod === 'OMISE_PROMPTPAY' && orderId && (
                   <PromptPayQR
                     amount={calculateTotal()}
-                    orderId={orderId}
+                    orderId={orderId as number}
                     onPaymentComplete={() => {
                       router.push(`/orders/${orderId}?success=true`);
                     }}
@@ -826,7 +827,7 @@ export default function CheckoutPage() {
                 {paymentMethod === 'OMISE_TRUEMONEY' && (
                   <TrueMoneyWallet
                     amount={calculateTotal()}
-                    orderId={orderId}
+                    orderId={orderId as number}
                     onPhoneNumberSubmit={handleTrueMoneyPhoneSubmit}
                     onPaymentComplete={() => {
                       if (orderId) {
