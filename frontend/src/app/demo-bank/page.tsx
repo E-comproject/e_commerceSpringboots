@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Building2, CheckCircle, XCircle, ArrowRight, Loader2 } from 'lucide-react';
 
-export default function DemoBankPage() {
+function DemoBankContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -124,5 +124,17 @@ export default function DemoBankPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function DemoBankPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    }>
+      <DemoBankContent />
+    </Suspense>
   );
 }
