@@ -49,7 +49,7 @@ interface Shop {
 }
 
 export default function ShopManagementPage() {
-  const { isAdmin, loading:  } = useAuth(); const authLoading = false;
+  const { isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const [applications, setApplications] = useState<SellerApplication[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);

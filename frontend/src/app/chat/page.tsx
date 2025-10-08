@@ -19,7 +19,7 @@ import { hasValidImageSrc } from '@/lib/utils';
 function ChatPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading:  } = useAuth(); const authLoading = false;
+  const { user, loading: authLoading } = useAuth();
   const [messageInput, setMessageInput] = useState('');
   const [shopNames, setShopNames] = useState<Record<number, string>>({});
 

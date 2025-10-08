@@ -43,7 +43,7 @@ interface DashboardStats {
 }
 
 export default function AdminDashboard() {
-  const { user, isAdmin, loading:  } = useAuth(); const authLoading = false;
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);

@@ -197,7 +197,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // Remove optimistic messages (temp-*) when real message arrives
       // Match by content and sender to identify the optimistic message
       const filteredMessages = roomMessages.filter(m => {
-        const isTempMessage = typeof m.id === 'string' && m.id.toString().startsWith('temp-');
+        const idAsString = m.id as any;
+        const isTempMessage = typeof idAsString === 'string' && idAsString.startsWith('temp-');
         if (isTempMessage) {
           // Remove if content and sender match (this is the real version)
           const isMatch = m.content === message.content &&
