@@ -70,7 +70,7 @@ interface SavedAddress {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { isAuthenticated, authLoading, user } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -99,7 +99,7 @@ export default function CheckoutPage() {
   // Payment
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('COD');
   const [paymentToken, setPaymentToken] = useState<string>('');
-  const [orderId, setOrderId] = useState<number | null>(null);
+  const [orderId, setOrderId] = useState<number | undefined>(undefined);
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
@@ -122,7 +122,7 @@ export default function CheckoutPage() {
   // Reset orderId when payment method changes (prevent reusing order from different payment method)
   useEffect(() => {
     if (orderId) {
-      setOrderId(null);
+      setOrderId(undefined);
     }
   }, [paymentMethod]);
 

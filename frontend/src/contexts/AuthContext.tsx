@@ -9,7 +9,13 @@ export interface User {
   username: string;
   email: string;
   role: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
   profileImage?: string;
+  isBanned?: boolean;
+  createdAt?: string;
+  lastLoginAt?: string;
 }
 
 interface AuthContextType {

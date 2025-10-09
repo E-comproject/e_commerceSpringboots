@@ -15,6 +15,18 @@ import {
   Clock,
   BarChart3,
 } from 'lucide-react';
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
 interface DashboardStats {
   totalUsers: number;
@@ -139,24 +151,27 @@ export default function AdminDashboard() {
               <TrendingUp className="h-6 w-6 text-blue-600" />
               <h2 className="text-xl font-bold text-gray-900">สินค้าขายดี</h2>
             </div>
-            <div className="space-y-4">
-              {stats?.topProducts.slice(0, 5).map((product, index) => (
-                <div key={product.productId} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-sm">
-                      {index + 1}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{product.productName}</p>
-                      <p className="text-sm text-gray-500">ขายแล้ว {product.totalSold} ชิ้น</p>
-                    </div>
-                  </div>
-                  <p className="font-semibold text-gray-900">
-                    ฿{product.totalRevenue.toLocaleString()}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart
+                data={stats?.topProducts.slice(0, 5).map(p => ({
+                  name: p.productName.length > 15 ? p.productName.substring(0, 15) + '...' : p.productName,
+                  ยอดขาย: p.totalRevenue,
+                  จำนวน: p.totalSold,
+                }))}
+                layout="vertical"
+                margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="name" type="category" width={90} />
+                <Tooltip
+                  formatter={(value: number) => '฿' + value.toLocaleString()}
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                />
+                <Legend />
+                <Bar dataKey="ยอดขาย" fill="#3b82f6" radius={[0, 8, 8, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
           {/* Top Shops */}
@@ -165,24 +180,29 @@ export default function AdminDashboard() {
               <Store className="h-6 w-6 text-green-600" />
               <h2 className="text-xl font-bold text-gray-900">ร้านค้ายอดนิยม</h2>
             </div>
-            <div className="space-y-4">
-              {stats?.topShops.slice(0, 5).map((shop, index) => (
-                <div key={shop.shopId} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold text-sm">
-                      {index + 1}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{shop.shopName}</p>
-                      <p className="text-sm text-gray-500">{shop.totalOrders} คำสั่งซื้อ</p>
-                    </div>
-                  </div>
-                  <p className="font-semibold text-gray-900">
-                    ฿{shop.totalRevenue.toLocaleString()}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart
+                data={stats?.topShops.slice(0, 5).map(s => ({
+                  name: s.shopName.length > 15 ? s.shopName.substring(0, 15) + '...' : s.shopName,
+                  ยอดขาย: s.totalRevenue,
+                  คำสั่งซื้อ: s.totalOrders,
+                }))}
+                layout="vertical"
+                margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="name" type="category" width={90} />
+                <Tooltip
+                  formatter={(value: number, name: string) =>
+                    name === 'ยอดขาย' ? '฿' + value.toLocaleString() : value.toLocaleString()
+                  }
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                />
+                <Legend />
+                <Bar dataKey="ยอดขาย" fill="#10b981" radius={[0, 8, 8, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
@@ -192,22 +212,71 @@ export default function AdminDashboard() {
             <BarChart3 className="h-6 w-6 text-purple-600" />
             <h2 className="text-xl font-bold text-gray-900">ยอดขาย 30 วันล่าสุด</h2>
           </div>
-          <div className="space-y-2">
-            {stats?.revenueByDate.slice(-7).reverse().map((data) => (
-              <div key={data.date} className="flex items-center justify-between py-3 border-b">
-                <div className="flex items-center gap-4">
-                  <Clock className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <p className="font-medium text-gray-900">{data.date}</p>
-                    <p className="text-sm text-gray-500">{data.orderCount} คำสั่งซื้อ</p>
-                  </div>
-                </div>
-                <p className="font-semibold text-gray-900">
-                  ฿{data.revenue.toLocaleString()}
-                </p>
-              </div>
-            ))}
-          </div>
+          <ResponsiveContainer width="100%" height={400}>
+            <AreaChart
+              data={stats?.revenueByDate.slice(-30).map(d => ({
+                วันที่: new Date(d.date).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' }),
+                ยอดขาย: d.revenue,
+                คำสั่งซื้อ: d.orderCount * 1000, // Scale up for better visibility
+              }))}
+              margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="วันที่"
+                tick={{ fontSize: 12 }}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis
+                tick={{ fontSize: 12 }}
+                tickFormatter={(value) => '฿' + (value / 1000).toFixed(0) + 'K'}
+              />
+              <Tooltip
+                formatter={(value: number, name: string) => {
+                  if (name === 'ยอดขาย') {
+                    return ['฿' + value.toLocaleString(), name];
+                  } else {
+                    return [(value / 1000).toFixed(0) + ' รายการ', 'คำสั่งซื้อ'];
+                  }
+                }}
+                contentStyle={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                }}
+              />
+              <Legend />
+              <Area
+                type="monotone"
+                dataKey="ยอดขาย"
+                stroke="#8b5cf6"
+                strokeWidth={2}
+                fillOpacity={1}
+                fill="url(#colorRevenue)"
+              />
+              <Area
+                type="monotone"
+                dataKey="คำสั่งซื้อ"
+                stroke="#06b6d4"
+                strokeWidth={2}
+                fillOpacity={1}
+                fill="url(#colorOrders)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </AdminLayout>

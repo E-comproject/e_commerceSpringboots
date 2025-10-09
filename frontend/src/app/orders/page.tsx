@@ -35,7 +35,7 @@ interface Order {
 
 export default function OrdersPage() {
   const router = useRouter();
-  const { isAuthenticated, authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
