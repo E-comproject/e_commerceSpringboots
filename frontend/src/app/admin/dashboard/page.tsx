@@ -151,25 +151,49 @@ export default function AdminDashboard() {
               <TrendingUp className="h-6 w-6 text-blue-600" />
               <h2 className="text-xl font-bold text-gray-900">สินค้าขายดี</h2>
             </div>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={320}>
               <BarChart
                 data={stats?.topProducts.slice(0, 5).map(p => ({
-                  name: p.productName.length > 15 ? p.productName.substring(0, 15) + '...' : p.productName,
+                  name: p.productName.length > 10 ? p.productName.substring(0, 10) + '...' : p.productName,
                   ยอดขาย: p.totalRevenue,
-                  จำนวน: p.totalSold,
                 }))}
-                layout="vertical"
-                margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                margin={{ top: 10, right: 30, left: 10, bottom: 60 }}
+                barSize={50}
+                barCategoryGap="20%"
               >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="name" type="category" width={90} />
+                <defs>
+                  <linearGradient id="colorProduct" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={1}/>
+                    <stop offset="100%" stopColor="#60a5fa" stopOpacity={0.8}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="name"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  tick={{ fontSize: 11, fill: '#6b7280' }}
+                />
+                <YAxis
+                  tickFormatter={(value) => '฿' + (value / 1000).toFixed(0) + 'K'}
+                  tick={{ fontSize: 11, fill: '#6b7280' }}
+                />
                 <Tooltip
                   formatter={(value: number) => '฿' + value.toLocaleString()}
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                  contentStyle={{
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
                 />
-                <Legend />
-                <Bar dataKey="ยอดขาย" fill="#3b82f6" radius={[0, 8, 8, 0]} />
+                <Legend wrapperStyle={{ fontSize: '13px' }} />
+                <Bar
+                  dataKey="ยอดขาย"
+                  fill="url(#colorProduct)"
+                  radius={[8, 8, 0, 0]}
+                  maxBarSize={60}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -180,27 +204,49 @@ export default function AdminDashboard() {
               <Store className="h-6 w-6 text-green-600" />
               <h2 className="text-xl font-bold text-gray-900">ร้านค้ายอดนิยม</h2>
             </div>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={320}>
               <BarChart
                 data={stats?.topShops.slice(0, 5).map(s => ({
-                  name: s.shopName.length > 15 ? s.shopName.substring(0, 15) + '...' : s.shopName,
+                  name: s.shopName.length > 10 ? s.shopName.substring(0, 10) + '...' : s.shopName,
                   ยอดขาย: s.totalRevenue,
-                  คำสั่งซื้อ: s.totalOrders,
                 }))}
-                layout="vertical"
-                margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                margin={{ top: 10, right: 30, left: 10, bottom: 60 }}
+                barSize={50}
+                barCategoryGap="20%"
               >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="name" type="category" width={90} />
-                <Tooltip
-                  formatter={(value: number, name: string) =>
-                    name === 'ยอดขาย' ? '฿' + value.toLocaleString() : value.toLocaleString()
-                  }
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                <defs>
+                  <linearGradient id="colorShop" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={1}/>
+                    <stop offset="100%" stopColor="#34d399" stopOpacity={0.8}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="name"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  tick={{ fontSize: 11, fill: '#6b7280' }}
                 />
-                <Legend />
-                <Bar dataKey="ยอดขาย" fill="#10b981" radius={[0, 8, 8, 0]} />
+                <YAxis
+                  tickFormatter={(value) => '฿' + (value / 1000).toFixed(0) + 'K'}
+                  tick={{ fontSize: 11, fill: '#6b7280' }}
+                />
+                <Tooltip
+                  formatter={(value: number) => '฿' + value.toLocaleString()}
+                  contentStyle={{
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: '13px' }} />
+                <Bar
+                  dataKey="ยอดขาย"
+                  fill="url(#colorShop)"
+                  radius={[8, 8, 0, 0]}
+                  maxBarSize={60}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
