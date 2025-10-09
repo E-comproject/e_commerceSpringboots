@@ -56,7 +56,7 @@ interface OrderItem {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'settings'>('profile');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -82,13 +82,18 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Wait for auth loading to complete before redirecting
+    if (!authLoading && !isAuthenticated) {
       router.push('/login');
       return;
     }
-    fetchProfile();
-    fetchOrders();
-  }, [isAuthenticated]);
+
+    // Only fetch data if authenticated
+    if (!authLoading && isAuthenticated) {
+      fetchProfile();
+      fetchOrders();
+    }
+  }, [isAuthenticated, authLoading, router]);
 
   const fetchProfile = async () => {
     try {
@@ -189,10 +194,14 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading) {
+  // Show loading while checking authentication or loading profile
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">กำลังโหลด...</p>
+        </div>
       </div>
     );
   }
