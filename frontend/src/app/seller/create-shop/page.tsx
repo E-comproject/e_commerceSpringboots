@@ -39,6 +39,15 @@ export default function CreateShopPage() {
       [e.target.name]: e.target.value,
     });
   };
+  const getImageUrl = (url: string | undefined) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    if (url.startsWith('/')) {
+      return `http://localhost:8080/api${url}`;
+    }
+    return url;
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,7 +146,7 @@ export default function CreateShopPage() {
           {/* Logo Upload */}
           <div>
             <ImageUpload
-              value={formData.logoUrl}
+              value={getImageUrl(formData.logoUrl)}
               onChange={(url) => setFormData({ ...formData, logoUrl: url })}
               type="shop"
               label="โลโก้ร้านค้า (ไม่บังคับ)"
