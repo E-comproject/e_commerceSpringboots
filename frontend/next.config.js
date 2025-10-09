@@ -1,26 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '8080',
-        pathname: '/api/files/**',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.onrender.com',
-        pathname: '/api/files/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'via.placeholder.com',
-      },
-    ],
+  experimental: {
+    appDir: true,
   },
-  // Enable standalone output for Docker
-  output: 'standalone',
+  images: {
+    domains: ['localhost'],
+  },
 }
 
 module.exports = nextConfig

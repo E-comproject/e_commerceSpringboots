@@ -70,7 +70,7 @@ function SellerChatPageContent() {
   // Fetch buyer names
   useEffect(() => {
     const fetchBuyerNames = async () => {
-      const buyerIds = Array.from(new Set(rooms.map(r => r.buyerUserId)));
+      const buyerIds = [...new Set(rooms.map(r => r.buyerUserId))];
       const names: Record<number, string> = {};
 
       for (const buyerId of buyerIds) {
@@ -250,7 +250,7 @@ function SellerChatPageContent() {
                           <div className="flex-shrink-0">
                             {hasValidImageSrc(msg.senderProfileImage) ? (
                               <img
-                                src={msg.senderProfileImage || ''}
+                                src={msg.senderProfileImage}
                                 alt={msg.senderUsername || 'User'}
                                 className="w-8 h-8 rounded-full object-cover"
                               />

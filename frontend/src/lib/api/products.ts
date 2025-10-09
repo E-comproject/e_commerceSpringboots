@@ -8,7 +8,7 @@ import {
   VariantOptionsResponse
 } from '@/types/product';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://e-commercespringboots.onrender.com/api';
+const API_BASE_URL = 'http://localhost:8080/api';
 
 // Product APIs
 export async function fetchProducts(): Promise<Product[]> {

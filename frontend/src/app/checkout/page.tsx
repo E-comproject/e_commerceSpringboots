@@ -70,8 +70,7 @@ interface SavedAddress {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { isAuthenticated, user } = useAuth();
-  const authLoading = false; // Remove if not needed
+  const { isAuthenticated, authLoading, user } = useAuth();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -113,7 +112,7 @@ export default function CheckoutPage() {
       if (user) {
         setShippingAddress(prev => ({
           ...prev,
-          fullName: user.username || '',
+          fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username,
           email: user.email || '',
         }));
       }
@@ -131,7 +130,7 @@ export default function CheckoutPage() {
     if (!url) return '';
     if (url.startsWith('http')) return url;
     if (url.startsWith('/')) {
-      return `${process.env.NEXT_PUBLIC_API_URL || 'https://e-commercespringboots.onrender.com/api'}${url}`;
+      return `http://localhost:8080/api${url}`;
     }
     return url;
   };
@@ -814,7 +813,7 @@ export default function CheckoutPage() {
                 {paymentMethod === 'OMISE_PROMPTPAY' && orderId && (
                   <PromptPayQR
                     amount={calculateTotal()}
-                    orderId={orderId as number}
+                    orderId={orderId}
                     onPaymentComplete={() => {
                       router.push(`/orders/${orderId}?success=true`);
                     }}
@@ -827,7 +826,7 @@ export default function CheckoutPage() {
                 {paymentMethod === 'OMISE_TRUEMONEY' && (
                   <TrueMoneyWallet
                     amount={calculateTotal()}
-                    orderId={orderId as number}
+                    orderId={orderId}
                     onPhoneNumberSubmit={handleTrueMoneyPhoneSubmit}
                     onPaymentComplete={() => {
                       if (orderId) {

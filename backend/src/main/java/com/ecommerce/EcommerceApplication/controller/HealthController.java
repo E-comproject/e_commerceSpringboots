@@ -1,40 +1,33 @@
 package com.ecommerce.EcommerceApplication.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.ecommerce.EcommerceApplication.repository.UserRepository;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/health")
 public class HealthController {
 
-    @Autowired(required = false)
-    private JdbcTemplate jdbcTemplate;
+    private final UserRepository users;
 
-    @GetMapping
+    public HealthController(UserRepository users) {
+        this.users = users;
+    }
+
+    @GetMapping("/health")
     public Map<String, Object> health() {
-        Map<String, Object> health = new HashMap<>();
-        health.put("status", "UP");
-        health.put("timestamp", System.currentTimeMillis());
-        
-        // Check database connection
+        Map<String, Object> m = new HashMap<>();
+        m.put("status", "ok");
         try {
-            if (jdbcTemplate != null) {
-                jdbcTemplate.queryForObject("SELECT 1", Integer.class);
-                health.put("database", "UP");
-            } else {
-                health.put("database", "NOT_CONFIGURED");
-            }
+            long count = users.count(); 
+            m.put("db", "up");
+            m.put("users", count);
         } catch (Exception e) {
-            health.put("database", "DOWN");
-            health.put("database_error", e.getMessage());
+            m.put("db", "down");
+            m.put("error", e.getMessage());
         }
-        
-        return health;
+        return m;
     }
 }

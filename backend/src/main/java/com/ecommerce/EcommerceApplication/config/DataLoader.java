@@ -10,7 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile({"dev", "prod"})  // ทำงานทั้ง dev และ prod
+@Profile("dev")
 @RequiredArgsConstructor
 @Slf4j
 public class DataLoader implements CommandLineRunner {

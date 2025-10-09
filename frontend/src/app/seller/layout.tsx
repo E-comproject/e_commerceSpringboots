@@ -21,32 +21,15 @@ import { useState } from 'react';
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isSeller, logout, loading: authLoading } = useAuth();
+  const { user, isSeller, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    // Only redirect after auth loading is complete
-    if (!authLoading && !user) {
+    if (!user || !isSeller) {
       router.push('/login');
-    } else if (!authLoading && user && !isSeller) {
-      // User is logged in but not a seller
-      router.push('/');
     }
-  }, [user, isSeller, authLoading, router]);
+  }, [user, isSeller, router]);
 
-  // Show loading while checking auth
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white">กำลังตรวจสอบสิทธิ์...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Don't render anything if not authenticated or not a seller
   if (!user || !isSeller) {
     return null;
   }

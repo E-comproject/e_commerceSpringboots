@@ -476,7 +476,7 @@ export default function ProductsPage() {
 
   const getImageUrl = (url: string) => {
     if (url.startsWith('/')) {
-      return `${process.env.NEXT_PUBLIC_API_URL || 'https://e-commercespringboots.onrender.com/api'}${url}`;
+      return `http://localhost:8080/api${url}`;
     }
     return url;
   };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Filter, Grid, List, Star, ShoppingCart } from 'lucide-react';
 import api from '@/lib/api';
@@ -28,7 +28,7 @@ interface Category {
   slug: string;
 }
 
-function ProductsContent() {
+export default function ProductsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const categoryId = searchParams.get('categoryId');
@@ -93,7 +93,7 @@ function ProductsContent() {
       const url = product.images[0].url;
       // Add API base URL if the URL is relative
       if (url.startsWith('/')) {
-        return `${process.env.NEXT_PUBLIC_API_URL || 'https://e-commercespringboots.onrender.com/api'}${url}`;
+        return `http://localhost:8080/api${url}`;
       }
       return url;
     }
@@ -303,17 +303,5 @@ function ProductsContent() {
         )}
       </div>
     </div>
-  );
-}
-
-export default function ProductsPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    }>
-      <ProductsContent />
-    </Suspense>
   );
 }

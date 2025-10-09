@@ -71,7 +71,7 @@ function ChatPageContent() {
   // Fetch shop names
   useEffect(() => {
     const fetchShopNames = async () => {
-      const shopIds = Array.from(new Set(rooms.map(r => r.shopId)));
+      const shopIds = [...new Set(rooms.map(r => r.shopId))];
       const names: Record<number, string> = {};
 
       for (const shopId of shopIds) {
@@ -259,7 +259,7 @@ function ChatPageContent() {
                           <div className="flex-shrink-0">
                             {hasValidImageSrc(msg.senderProfileImage) ? (
                               <img
-                                src={msg.senderProfileImage || ''}
+                                src={msg.senderProfileImage}
                                 alt={msg.senderUsername || 'User'}
                                 className="w-8 h-8 rounded-full object-cover"
                               />

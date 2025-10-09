@@ -2,7 +2,6 @@ package com.ecommerce.EcommerceApplication.controller;
 
 import com.ecommerce.EcommerceApplication.config.AppConfig;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,16 +20,13 @@ import java.util.UUID;
 @CrossOrigin(origins = "${app.cors.allowed-origins}")
 public class FileUploadController {
     
-    // AppConfig is kept for potential future use
-    // @Autowired
-    // private AppConfig appConfig;
-    
-    @Value("${app.upload.dir:uploads}")
-    private String uploadBaseDir;
+    @Autowired
+    private AppConfig appConfig;
 
-    private String getUploadDir(String subdir) {
-        return uploadBaseDir + "/" + subdir + "/";
-    }
+    private static final String UPLOAD_DIR_CHAT = "uploads/chat/";
+    private static final String UPLOAD_DIR_PRODUCTS = "uploads/products/";
+    private static final String UPLOAD_DIR_PROFILES = "uploads/profiles/";
+    private static final String UPLOAD_DIR_SHOPS = "uploads/shops/";
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     private static final String[] ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"};
 
@@ -70,7 +66,7 @@ public class FileUploadController {
             String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
 
             // Create upload directory if not exists
-            Path uploadPath = Paths.get(getUploadDir("chat"));
+            Path uploadPath = Paths.get(UPLOAD_DIR_CHAT);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
@@ -97,40 +93,40 @@ public class FileUploadController {
 
     @GetMapping("/chat/{filename}")
     public ResponseEntity<byte[]> getChatImage(@PathVariable String filename) {
-        return getImage(getUploadDir("chat"), filename);
+        return getImage(UPLOAD_DIR_CHAT, filename);
     }
 
     // Upload product image
     @PostMapping("/upload/product")
     public ResponseEntity<?> uploadProductImage(@RequestParam("file") MultipartFile file) {
-        return uploadImage(file, getUploadDir("products"), "product");
+        return uploadImage(file, UPLOAD_DIR_PRODUCTS, "product");
     }
 
     @GetMapping("/products/{filename}")
     public ResponseEntity<byte[]> getProductImage(@PathVariable String filename) {
-        return getImage(getUploadDir("products"), filename);
+        return getImage(UPLOAD_DIR_PRODUCTS, filename);
     }
 
     // Upload profile image
     @PostMapping("/upload/profile")
     public ResponseEntity<?> uploadProfileImage(@RequestParam("file") MultipartFile file) {
-        return uploadImage(file, getUploadDir("profiles"), "profile");
+        return uploadImage(file, UPLOAD_DIR_PROFILES, "profile");
     }
 
     @GetMapping("/profiles/{filename}")
     public ResponseEntity<byte[]> getProfileImage(@PathVariable String filename) {
-        return getImage(getUploadDir("profiles"), filename);
+        return getImage(UPLOAD_DIR_PROFILES, filename);
     }
 
     // Upload shop logo
     @PostMapping("/upload/shop")
     public ResponseEntity<?> uploadShopLogo(@RequestParam("file") MultipartFile file) {
-        return uploadImage(file, getUploadDir("shops"), "shop");
+        return uploadImage(file, UPLOAD_DIR_SHOPS, "shop");
     }
 
     @GetMapping("/shops/{filename}")
     public ResponseEntity<byte[]> getShopImage(@PathVariable String filename) {
-        return getImage(getUploadDir("shops"), filename);
+        return getImage(UPLOAD_DIR_SHOPS, filename);
     }
 
     // Generic upload method
@@ -177,8 +173,9 @@ public class FileUploadController {
             Path filePath = uploadPath.resolve(uniqueFilename);
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-            // Return file URL
-            String fileUrl = "/files/" + type + "s/" + uniqueFilename;
+            // Return full file URL (including domain and /api prefix)
+            String relativePath = "files/" + type + "s/" + uniqueFilename;
+            String fileUrl = appConfig.buildFileUrl(relativePath);
 
             return ResponseEntity.ok(Map.of(
                 "url", fileUrl,

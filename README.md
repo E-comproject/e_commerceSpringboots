@@ -55,7 +55,7 @@ cd backend
 
 
 # หรือ Production mode
-mvn spring-boot:run -Dspring.profiles.active=dev
+mvn spring-boot:run -Dspring.profiles.active=prod
 ```
 
 Backend จะรันที่ http://localhost:8080

@@ -15,10 +15,6 @@ export interface ChatMessage {
   attachments: string[];
   isRead: boolean;
   createdAt: string;
-  sentAt?: string; // Alternative property name
-  message?: string; // Alternative to content
-  senderUsername?: string;
-  senderProfileImage?: string | null;
 }
 
 export interface ChatSendFrame {

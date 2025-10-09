@@ -27,9 +27,8 @@ export class ChatWebSocketService {
 
     this.client = new Client({
       webSocketFactory: () => {
-        const wsUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://e-commercespringboots.onrender.com';
-        console.log('Creating SockJS connection to', `${wsUrl}/api/ws-chat`);
-        return new SockJS(`${wsUrl}/api/ws-chat`);
+        console.log('Creating SockJS connection to http://localhost:8080/api/ws-chat');
+        return new SockJS('http://localhost:8080/api/ws-chat');
       },
       connectHeaders: token ? {
         Authorization: `Bearer ${token}`,

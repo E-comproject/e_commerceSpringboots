@@ -127,7 +127,7 @@ export default function HomePage() {
       const url = product.images[0].url;
       // Add API base URL if the URL is relative
       if (url.startsWith('/')) {
-        return `${process.env.NEXT_PUBLIC_API_URL || 'https://e-commercespringboots.onrender.com/api'}${url}`;
+        return `http://localhost:8080/api${url}`;
       }
       return url;
     }
